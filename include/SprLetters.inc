@@ -11,10 +11,16 @@ stock const SL_LIB_NAME[] = "SpriteLetters";
 #define var_SL_WordEnt var_owner
 #define var_SL_WordDir var_vuser1
 #define var_SL_WordText var_message
+#define var_SL_WordOffset var_fuser2
+#define var_SL_WordCharset var_noise
 #define var_SL_LetterSize var_fuser1
 #define var_SL_LetterText var_message
+#define var_SL_LetterCharset var_noise
+
+#define var_SL_WordSaveId var_iuser1
 
 #define SprLett_CreateWord(%1) SprLett_BuildWord(SprLett_InitWord(%1))
+#define SprLett_RebuildWord(%1) SprLett_DestroyWord(%1);SprLett_BuildWord(%1)
 
 enum _:SprLett_CharsetData {
     SL_CD_Name[32],
@@ -56,9 +62,13 @@ enum _:SprLett_Params{
     
     /**
      * Физический размер букв.
-     * Для слов отступ между буквами будет равен SL_P_Size*2
      */
     Float:SL_P_Size,
+    
+    /**
+     * Расстояние между буквами.
+     */
+    Float:SL_P_Offset,
 }
 
 /**
@@ -86,6 +96,17 @@ enum _:SprLett_ParamsStr{
     SL_P_Charset = _:SprLett_ParamsVec,
 }
 
+/* Core */
+
+/**
+ * Получает индекс ентити слова
+ *
+ * @param Ent Индекс ентити буквы/слова
+ *
+ * @return Индекс ентити слова или 0 если слово не найдено
+ */
+native SprLett_GetWord(const Ent);
+
 /**
  * Возвращает следующий элемент слова
  *
@@ -99,6 +120,7 @@ native SprLett_WordIterNext(&Iterator);
  * Является ли ентити буквой/словом
  *
  * @param Ent Индекс ентити
+ * @param Is  Тип проверки (см. enum SprLett_WhatIs)
  *
  * @return true если ентити является тем, что указано во втором параметре
  */
@@ -107,11 +129,11 @@ native SprLett_Is(const Ent, const SprLett_WhatIs:Is);
 /**
  * Удаление слова.
  *
- * @param LetterEnt Индекс ентити любой буквы слова
+ * @param WordEnt Индекс ентити слова
  *
  * @noreturn
  */
-native SprLett_RemoveWord(const LetterEnt);
+native SprLett_RemoveWord(const WordEnt);
 
 /**
  * Переключение режима редактирования букв.
@@ -141,11 +163,11 @@ native SprLett_CreateLetter(const Letter[LETTER_SIZE], const Float:Origin[3] = {
  * @note Данная функция не строит слово. Для построения слова используется натив SprLett_BuildWord
  *
  * @param Word   Слово, которое надо вывести
- * @param Origin Начальные коорды
+ * @param Origin Начальные координаты слова
  *
  * @return  Индекс ентити слова
  */
-native SprLett_InitWord(const Word[WORD_MAX_LENGTH], const Float:Origin[3] = {0.0, 0.0, 0.0});
+native SprLett_InitWord(const Word[WORD_MAX_LENGTH] = "", const Float:Origin[3] = {0.0, 0.0, 0.0});
 
 /**
  * Строит слово исходя из параметров ентити слова
@@ -174,3 +196,34 @@ native SprLett_DestroyWord(const WordEnt);
  * @return true если параметр успешно изменён, иначе false
  */
 native bool:SprLett_SetParams(any:...);
+
+/**
+ * Получение текущих значений параметров создания слов.
+ *
+ * @note Ex: new LetterSize = SprLett_GetParam(SL_P_Size);
+ * @note Ex: new Float:WordDir[3]; SprLett_GetParam(SL_P_WordDir, WordDir);
+ * @note Ex: new Charset[32]; SprLett_GetParam(SL_P_Charset, Charset, charsmax(Charset));
+ *
+ * @return Для числовых значений - значение параметра. Для остальных кол-во записанных в массив ячеек.
+ */
+native any:SprLett_GetParam(const {SprLett_Params, SprLett_ParamsVec, SprLett_ParamsStr}:Param, any:...);
+
+/* Saver */
+
+/**
+ * Сохранение слова на карте.
+ *
+ * @param WordEnt Индекс ентити слова
+ *
+ * @noreturn
+ */
+native SprLett_SaveWord(const WordEnt);
+
+/**
+ * Удаление сохранения слова.
+ *
+ * @param WordEnt Индекс ентити слова
+ *
+ * @noreturn
+ */
+native SprLett_UnSaveWord(const WordEnt);

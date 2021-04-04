@@ -1,13 +1,22 @@
+/**
+ * Sprite Letters
+ */
+
 #include <amxmodx>
 #include <reapi>
 #include <SprLetters>
+
+#pragma semicolon 1
 
 #define nullent 0
 #define var_WordEnt var_owner
 #define var_WordDir var_vuser1
 #define var_WordText var_message
+#define var_WordOffset var_fuser2
+#define var_WordCharset var_noise
 #define var_LetterSize var_fuser1
 #define var_LetterText var_message
+#define var_LetterCharset var_noise
 #include "SprLett-Core/Utils"
 
 new const PLUG_NAME[] = "Sprite Letters";
@@ -16,6 +25,8 @@ new const PLUG_VER[] = "1.0.0";
 new const INFO_TARGET_CLASSNAME[] = "info_target";
 new const LETTER_CLASSNAME[] = "SprLetters_Letter";
 new const WORD_CLASSNAME[] = "SprLetters_Word";
+
+new CHARSET_DEFAULT_NAME[32] = "Default";
 
 #define IsLetter(%1) FClassnameIs(%1,LETTER_CLASSNAME)
 #define IsWord(%1) FClassnameIs(%1,WORD_CLASSNAME)
@@ -26,12 +37,13 @@ new SprParams[SprLett_Params] = {
     1.0,   // SL_P_Scale
     255.0, // SL_P_Alpha
     9.0,   // SL_P_Size
+    18.0,  // SL_P_Offset
 };
 new Float:SprWordDir[3] = {1.0, 0.0, 0.0};
 new Float:SprAngles[3] = {0.0, 0.0, 0.0};
 new SprCharset[SprLett_CharsetData];
 
-new bool:EditMode = false;
+new bool:EditMode = true;
 new Trie:Charsets;
 
 public plugin_precache(){
@@ -44,6 +56,7 @@ public plugin_precache(){
 
     if(!TrieGetArray(Charsets, "Default", SprCharset, SprLett_CharsetData))
         TrieGetFirstArray(Charsets, SprCharset, SprLett_CharsetData);
+    copy(CHARSET_DEFAULT_NAME, charsmax(CHARSET_DEFAULT_NAME), SprCharset[SL_CD_Name]);
 }
 
 public plugin_init(){
@@ -96,8 +109,10 @@ InitWord(const Word[], const Float:Origin[3]){
     set_entvar(WordEnt, var_scale, SprParams[SL_P_Scale]);
     set_entvar(WordEnt, var_renderamt, SprParams[SL_P_Alpha]);
     set_entvar(WordEnt, var_LetterSize, SprParams[SL_P_Size]);
+    set_entvar(WordEnt, var_WordOffset, SprParams[SL_P_Offset]);
     set_entvar(WordEnt, var_WordDir, SprWordDir);
     set_entvar(WordEnt, var_WordText, Word);
+    set_entvar(WordEnt, var_WordCharset, SprCharset[SL_CD_Name]);
 
     return WordEnt;
 }
@@ -119,15 +134,20 @@ BuildWord(const WordEnt){
 
     new Float:Dir[3];
     get_entvar(WordEnt, var_WordDir, Dir);
+    angle_vector(Dir, ANGLEVECTOR_FORWARD, Dir);
 
     new Float:OffsetVec[3];
-    VecMult(Dir, Float:get_entvar(WordEnt, var_LetterSize)*2.0, OffsetVec);
+    VecMult(Dir, Float:get_entvar(WordEnt, var_WordOffset), OffsetVec);
 
     new Word[WORD_MAX_LENGTH];
     get_entvar(WordEnt, var_WordText, Word, charsmax(Word));
 
     new Float:Origin[3];
     get_entvar(WordEnt, var_origin, Origin);
+
+    new Charset[SprLett_CharsetData], CharsetName[32];
+    get_entvar(WordEnt, var_WordCharset, CharsetName, charsmax(CharsetName));
+    GetCharset(CharsetName, Charset);
 
     new PrevLetterEnt = WordEnt;
     new Letter[LETTER_SIZE], Next = 0;
@@ -140,7 +160,7 @@ BuildWord(const WordEnt){
             }
 
             MakeWordLetter(WordEnt, LetterEnt);
-            set_entvar(LetterEnt, var_LetterText, Letter);
+            SetLetterCharset(LetterEnt, Charset);
             set_entvar(PrevLetterEnt, var_chain, LetterEnt);
             PrevLetterEnt = LetterEnt;
         }
@@ -198,15 +218,14 @@ CreateLetter(const Letter[LETTER_SIZE], const Float:Origin[3], const bool:ForWor
         return nullent;
 
     set_entvar(Ent, var_classname, LETTER_CLASSNAME);
-    set_entvar(Ent, var_model, SprCharset[SL_CD_SpriteFile]);
-    set_entvar(Ent, var_modelindex, SprCharset[SL_CD_SpriteIndex]);
     set_entvar(Ent, var_movetype, MOVETYPE_FLY);
     set_entvar(Ent, var_solid, EditMode ? SOLID_SLIDEBOX : SOLID_TRIGGER);
     set_entvar(Ent, var_origin, Origin);
     set_entvar(Ent, var_rendermode, kRenderTransAdd);
-    set_entvar(Ent, var_frame, float(GetCharNum(Letter)));
+    set_entvar(Ent, var_LetterText, Letter);
 
     if(!ForWord){
+        SetLetterCharset(Ent, SprCharset);
         set_entvar(Ent, var_renderamt, SprParams[SL_P_Alpha]);
         SetEntSize(Ent, SprParams[SL_P_Size]*SprParams[SL_P_Scale]);
         set_entvar(Ent, var_angles, SprAngles);
@@ -214,6 +233,24 @@ CreateLetter(const Letter[LETTER_SIZE], const Float:Origin[3], const bool:ForWor
     }
 
     return Ent;
+}
+
+/**
+ * Устанавливает набор символов для буквы
+ *
+ * @param LetterEnt Индекс ентити буквы
+ * @param Charset   Новый набор символов
+ *
+ * @noreturn
+ */
+SetLetterCharset(const LetterEnt, const Charset[SprLett_CharsetData]){
+    set_entvar(LetterEnt, var_model, Charset[SL_CD_SpriteFile]);
+    set_entvar(LetterEnt, var_modelindex, Charset[SL_CD_SpriteIndex]);
+    set_entvar(LetterEnt, var_LetterCharset, Charset[SL_CD_Name]);
+
+    new Letter[LETTER_SIZE];
+    get_entvar(LetterEnt, var_LetterText, Letter, charsmax(Letter));
+    set_entvar(LetterEnt, var_frame, float(GetCharNum(Letter, Charset[SL_CD_Map])));
 }
 
 /**
@@ -263,15 +300,34 @@ RemoveLetter(const LetterEnt){
 /**
  * Получение номера символа из карты символов
  *
- * @note Если указанный символ не найден в карте функция вернёт номер первого символа (0)
+ * @note Если указанный символ не найден, функция вернёт номер первого символа (0)
  *
  * @param Char Символ
+ * @param Map  Карта символов. Если не укзана, берётся из текущего набора символов
  *
  * @return Порядковый номер символа
  */
-GetCharNum(const Char[]){
+GetCharNum(const Char[], const Trie:Map = Invalid_Trie){
     new Num;
-    return TrieGetCell(SprCharset[SL_CD_Map], Char, Num) ? Num-1 : 0;
+    return TrieGetCell(Map == Invalid_Trie ? SprCharset[SL_CD_Map] : Map, Char, Num) ? Num-1 : 0;
+}
+
+/**
+ * Получение набора символов по его названию
+ *
+ * @note Если набор символов не найден, будет возвращён первый загруженный набор или Default
+ *
+ * @param Name    Название набора символов
+ * @param Charset Полученный набор символов
+ *
+ * @noreturn
+ */
+bool:GetCharset(const Name[], Charset[SprLett_CharsetData]){
+    if(!TrieGetArray(Charsets, Name, Charset, SprLett_CharsetData)){
+        TrieGetArray(Charsets, CHARSET_DEFAULT_NAME, Charset, SprLett_CharsetData);
+        return false;
+    }
+    return true;
 }
 
 /**

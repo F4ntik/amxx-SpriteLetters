@@ -5,15 +5,24 @@
 #include <amxmodx>
 
 #define get_vector(%1,%2) get_array_f(%1,%2,3)
+#define set_vector(%1,%2) set_array_f(%1,%2,3)
 
 enum {
     ERR_UNDEFINED_SPR_PARAM = 0,
     ERR_UNDEFINED_CHARSET,
+    ERR_INVALID_PARAMS_COUNT,
 }
+
+#define NATIVE_CHECK_PARAMS_COUNT(%1) \
+    if(pCnt < %1){\
+        log_error(ERR_INVALID_PARAMS_COUNT, "Invalid params count.");\
+        return 0;\
+    }
 
 public plugin_natives(){
     register_native("SprLett_CreateLetter", "@_CreateLetter");
 
+    register_native("SprLett_GetWord", "@_GetWord");
     register_native("SprLett_InitWord", "@_InitWord");
     register_native("SprLett_BuildWord", "@_BuildWord");
     register_native("SprLett_RemoveWord", "@_RemoveWord");
@@ -22,7 +31,13 @@ public plugin_natives(){
 
     register_native("SprLett_Is", "@_Is");
     register_native("SprLett_SetParams", "@_SetParams");
+    register_native("SprLett_GetParam", "@_GetParam");
     register_native("SprLett_EditToggle", "@_EditToggle");
+}
+
+@_GetWord(){
+    enum {Arg_Ent = 1}
+    return GetWord(get_param(Arg_Ent));
 }
 
 @_WordIterNext(){
@@ -35,7 +50,7 @@ public plugin_natives(){
 bool:@_Is(){
     enum {Arg_Ent = 1, Arg_Is}
     new Ent = get_param(Arg_Ent);
-    new SprLett_WhatIs:Is = SprLett_WhatIs:get_param_byref(Arg_Is);
+    new SprLett_WhatIs:Is = SprLett_WhatIs:get_param(Arg_Is);
 
     switch(Is){
         case SL_Is_Word:
@@ -55,9 +70,9 @@ bool:@_Is(){
 }
 
 @_RemoveWord(){
-    enum {Arg_Ent = 1}
+    enum {Arg_WordEnt = 1}
 
-    RemoveWord(get_param(Arg_Ent));
+    RemoveWord(get_param(Arg_WordEnt));
 }
 
 @_EditToggle(){
@@ -105,8 +120,10 @@ bool:@_SetParams(PlugId, pCnt){
                 SprParams[SL_P_Alpha] = get_param_f(i+1);
             case SL_P_Size:
                 SprParams[SL_P_Size] = get_param_f(i+1);
+            case SL_P_Offset:
+                SprParams[SL_P_Offset] = get_param_f(i+1);
 
-            case SL_P_WordDir: 
+            case SL_P_WordDir:
                 get_vector(i+1, SprWordDir);
             case SL_P_Angles:
                 get_vector(i+1, SprAngles);
@@ -114,14 +131,45 @@ bool:@_SetParams(PlugId, pCnt){
             case SL_P_Charset: {
                 new CharsetName[32];
                 get_string(i+1, CharsetName, charsmax(CharsetName));
-                if(!TrieGetArray(Charsets, CharsetName, SprCharset, SprLett_CharsetData)){
-                    // log_error(ERR_UNDEFINED_CHARSET, "Undefined charset '%s'.", CharsetName);
-                    return false;
-                }
+                return GetCharset(CharsetName, SprCharset);
             }
 
             default: log_error(ERR_UNDEFINED_SPR_PARAM, "Undefined sprites param (%d).", _:Param);
         }
     }
     return true;
+}
+
+any:@_GetParam(PlugId, pCnt){
+    NATIVE_CHECK_PARAMS_COUNT(1)
+    new Param = get_param_byref(1);
+
+    switch(Param){
+        case SL_P_Scale:
+            return SprParams[SL_P_Scale];
+        case SL_P_Alpha:
+            return SprParams[SL_P_Alpha];
+        case SL_P_Size:
+            return SprParams[SL_P_Size];
+        case SL_P_Offset:
+            return SprParams[SL_P_Offset];
+
+        case SL_P_WordDir: {
+            NATIVE_CHECK_PARAMS_COUNT(2)
+            return set_vector(2, SprWordDir);
+        }
+        case SL_P_Angles: {
+            NATIVE_CHECK_PARAMS_COUNT(2)
+            return set_vector(2, SprAngles);
+        }
+
+        case SL_P_Charset: {
+            NATIVE_CHECK_PARAMS_COUNT(3)
+            return set_string(2, SprCharset[SL_CD_Name], get_param(3));
+        }
+
+        default: log_error(ERR_UNDEFINED_SPR_PARAM, "Undefined sprites param (%d).", _:Param);
+    }
+
+    return 0;
 }
