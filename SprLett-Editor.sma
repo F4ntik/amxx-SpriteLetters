@@ -40,6 +40,7 @@ new Float:gMoveStep[MAX_PLAYERS + 1] = {1.0, ...};
 
 public plugin_init(){
     register_plugin(PLUG_NAME, PLUG_VER, "ArKaNeMaN");
+    register_dictionary("SpriteLetters.ini");
 
     RegisterClCmds(CREATE_CMD, "@Cmd_Create");
     RegisterClCmds(SELECT_CMD, "@Cmd_Select");
@@ -88,6 +89,8 @@ public plugin_init(){
 
     gSelWord[UserId] = SprLett_InitWord(Word, UserOrigin);
     SprLett_BuildWord(gSelWord[UserId]);
+
+    client_print(UserId, print_center, "%l", "CMD_WORD_CREATED", Word);
 }
 
 @Cmd_Charset(const UserId){
@@ -118,6 +121,8 @@ public plugin_init(){
     CHECK_WORD(UserId)
 
     SprLett_SaveWord(gSelWord[UserId]);
+
+    client_print(UserId, print_center, Lang("CMD_WORD_SAVED"));
 }
 
 @Cmd_Remove(const UserId){
@@ -127,6 +132,8 @@ public plugin_init(){
     SprLett_UnSaveWord(gSelWord[UserId]);
     SprLett_RemoveWord(gSelWord[UserId]);
     gSelWord[UserId] = nullent;
+
+    client_print(UserId, print_center, Lang("CMD_WORD_REMOVED"));
 }
 
 @Cmd_SetStepEx(const UserId){
@@ -209,7 +216,7 @@ public plugin_init(){
     get_user_aiming(UserId, Ent);
     
     if((Ent = SprLett_GetWord(Ent)) == nullent){
-        client_print(UserId, print_center, "Слово не найдено");
+        client_print(UserId, print_center, Lang("CMD_WORD_NOT_FOUND"));
         gSelWord[UserId] = nullent;
         return;
     }
@@ -218,6 +225,6 @@ public plugin_init(){
 
     new Word[WORD_MAX_LENGTH];
     get_entvar(gSelWord[UserId], var_SL_WordText, Word, charsmax(Word));
-    client_print(UserId, print_center, "Слово '%s' выбрано", Word);
+    client_print(UserId, print_center, "%l", "CMD_WORD_SELECTED", Word);
     return;
 }
