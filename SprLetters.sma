@@ -20,7 +20,7 @@
 #include "SprLett-Core/Utils"
 
 new const PLUG_NAME[] = "Sprite Letters";
-new const PLUG_VER[] = "1.0.0";
+new const PLUG_VER[] = "1.1.0";
 
 new const INFO_TARGET_CLASSNAME[] = "info_target";
 new const LETTER_CLASSNAME[] = "SprLetters_Letter";

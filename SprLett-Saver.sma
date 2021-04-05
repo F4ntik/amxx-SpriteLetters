@@ -16,7 +16,7 @@
 new const CFGS_DIR[] = "/plugins/SpriteLetters/Saves/";
 
 new const PLUG_NAME[] = "[SprLett] Saver";
-new const PLUG_VER[] = "1.0.0";
+new const PLUG_VER[] = "1.1.0";
 
 new JSON:gSaves;
 new gSavesFile[PLATFORM_MAX_PATH];

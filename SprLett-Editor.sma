@@ -30,7 +30,7 @@ new const REMOVE_CMD[] = "slremove";
 new const SAVE_CMD[] = "slsave";
 
 new const PLUG_NAME[] = "[SprLett] Editor";
-new const PLUG_VER[] = "1.0.0";
+new const PLUG_VER[] = "1.1.0";
 
 new gSelWord[MAX_PLAYERS + 1] = {nullent, ...};
 new Float:gMoveStep[MAX_PLAYERS + 1] = {1.0, ...};
