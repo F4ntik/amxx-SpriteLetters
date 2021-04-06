@@ -25,6 +25,9 @@ Menu_Direction(const UserId){
     menu_additem(MenuId, Lang("MENU_DIR_YMM"), fmt("$%s 0.0 %.1f", DIR_CMD, -gMoveStep[UserId]));
     
     menu_addtext(MenuId, fmt("%l", "MENU_DIR_CURRENT_VALUE", Dir[0], Dir[1]), 0);
+    
+    menu_addblank2(MenuId);
+    menu_addblank2(MenuId);
 
     menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_BACK"));
     menu_setprop(MenuId, MPROP_EXIT, MEXIT_FORCE);
