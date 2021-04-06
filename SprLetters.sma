@@ -43,7 +43,7 @@ new Float:SprWordDir[3] = {1.0, 0.0, 0.0};
 new Float:SprAngles[3] = {0.0, 0.0, 0.0};
 new SprCharset[SprLett_CharsetData];
 
-new bool:EditMode = true;
+new bool:EditMode = false;
 new Trie:Charsets;
 
 public plugin_precache(){
@@ -84,7 +84,7 @@ EditToggle(const bool:State){
     while((Ent = rg_find_ent_by_class(Ent, LETTER_CLASSNAME)) > 0){
         if(IsEntRemoved(Ent))
             continue;
-        set_entvar(Ent, var_solid, EditMode ? SOLID_SLIDEBOX : SOLID_TRIGGER);
+        set_entvar(Ent, var_solid, EditMode ? SOLID_BBOX : SOLID_NOT);
     }
 }
 
@@ -219,7 +219,7 @@ CreateLetter(const Letter[LETTER_SIZE], const Float:Origin[3], const bool:ForWor
 
     set_entvar(Ent, var_classname, LETTER_CLASSNAME);
     set_entvar(Ent, var_movetype, MOVETYPE_FLY);
-    set_entvar(Ent, var_solid, EditMode ? SOLID_SLIDEBOX : SOLID_TRIGGER);
+    set_entvar(Ent, var_solid, EditMode ? SOLID_BBOX : SOLID_NOT);
     set_entvar(Ent, var_origin, Origin);
     set_entvar(Ent, var_rendermode, kRenderTransAdd);
     set_entvar(Ent, var_LetterText, Letter);

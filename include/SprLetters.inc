@@ -144,7 +144,14 @@ native SprLett_RemoveWord(const WordEnt);
  *
  * @noreturn
  */
-native SprLett_EditToggle(const bool:State = true);
+native SprLett_SetEditMode(const bool:State = true);
+
+/**
+ * Получение текущего состояния режима редактирования.
+ *
+ * @return true, если режим редактирования включен, инче false;
+ */
+native bool:SprLett_GetEditMode();
 
 /**
  * Создаёт букву.

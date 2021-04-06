@@ -15,6 +15,7 @@ new const MOVESTEP_VALUES[] = {1, 5, 10, 25, 50};
 
 new const SELECT_CMD[] = "slselect";
 new const CREATE_CMD[] = "slcreate";
+new const EDITMODE_CMD[] = "sleditmode";
 
 new const STEP_CMD[] = "slsetstep";
 new const STEPEX_CMD[] = "slsetstepex";
@@ -44,6 +45,7 @@ public plugin_init(){
 
     RegisterClCmds(CREATE_CMD, "@Cmd_Create");
     RegisterClCmds(SELECT_CMD, "@Cmd_Select");
+    RegisterClCmds(EDITMODE_CMD, "@Cmd_EditMode");
 
     RegisterClCmds(STEP_CMD, "@Cmd_SetStep");
     RegisterClCmds(STEPEX_CMD, "@Cmd_SetStepEx");
@@ -59,6 +61,14 @@ public plugin_init(){
     RegisterClCmds(SAVE_CMD, "@Cmd_Save");
 
     MenuCmds_Init();
+}
+
+@Cmd_EditMode(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    
+    SprLett_SetEditMode(!SprLett_GetEditMode());
+
+    client_print(UserId, print_center, "%l", "CMD_EDIT_MODE", SprLett_GetEditMode() ? Lang("CMDS_ENABLED") : Lang("CMDS_DISABLED"));
 }
 
 @Cmd_Create(const UserId){

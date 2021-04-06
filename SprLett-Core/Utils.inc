@@ -10,7 +10,7 @@ new Float:__TEMP_VEC[3];
 #define copy_entvar_num(%1,%2,%3) set_entvar(%3,%2,get_entvar(%1,%2))
 
 #define RgRemoveEnt(%1) set_entvar(%1,var_flags,get_entvar(%1,var_flags)|FL_KILLME)
-#define IsEntRemoved(%1) (get_entvar(%1,var_flags)&FL_KILLME)
+#define IsEntRemoved(%1) (is_nullent(%1)||get_entvar(%1,var_flags)&FL_KILLME)
  
 new const Float:VEC_UNIT[3] = {1.0, 1.0, 1.0};
 

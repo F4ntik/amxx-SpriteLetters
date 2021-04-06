@@ -32,7 +32,8 @@ public plugin_natives(){
     register_native("SprLett_Is", "@_Is");
     register_native("SprLett_SetParams", "@_SetParams");
     register_native("SprLett_GetParam", "@_GetParam");
-    register_native("SprLett_EditToggle", "@_EditToggle");
+    register_native("SprLett_SetEditMode", "@_SetEditMode");
+    register_native("SprLett_GetEditMode", "@_GetEditMode");
 }
 
 @_GetWord(){
@@ -75,10 +76,14 @@ bool:@_Is(){
     RemoveWord(get_param(Arg_WordEnt));
 }
 
-@_EditToggle(){
+@_SetEditMode(){
     enum {Arg_State = 1}
 
     EditToggle(bool:get_param(Arg_State));
+}
+
+bool:@_GetEditMode(){
+    return EditMode;
 }
 
 @_CreateLetter(){

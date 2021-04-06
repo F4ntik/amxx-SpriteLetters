@@ -17,12 +17,13 @@ Menu_Main(const UserId){
     menu_additem(MenuId, Lang("MENU_MAIN_SELECT_WORD"), fmt("$%s", SELECT_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_CREATE_WORD"), fmt("#messagemode %s", CREATE_CMD));
 
+    menu_additem(MenuId, fmt("%l", "MENU_MAIN_EDIT_MODE", SprLett_GetEditMode() ? Lang("MENUS_ENABLED") : Lang("MENUS_DISABLED")), fmt("$%s", EDITMODE_CMD));
+
     menu_additem(MenuId, Lang("MENU_MAIN_MOVE"), fmt("#%s", MOVEMENU_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_ROT"), fmt("#%s", ROTATEMENU_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_DIR"), fmt("#%s", DIRMENU_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_OTHER"), fmt("#%s", ATTRSMENU_CMD));
     
-    menu_addblank2(MenuId);
     menu_addblank2(MenuId);
 
     menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_EXIT"));
