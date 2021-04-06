@@ -21,8 +21,8 @@ Menu_Rotate(const UserId){
     menu_additem(MenuId, Lang("MENU_ROT_XPP"), fmt("$%s %.1f 0.0 0.0", ROTATE_CMD, gMoveStep[UserId]));
     menu_additem(MenuId, Lang("MENU_ROT_XMM"), fmt("$%s %.1f 0.0 0.0", ROTATE_CMD, -gMoveStep[UserId]));
 
-    menu_additem(MenuId, Lang("MENU_ROT_XPP"), fmt("$%s 0.0 %.1f 0.0", ROTATE_CMD, gMoveStep[UserId]));
-    menu_additem(MenuId, Lang("MENU_ROT_XMM"), fmt("$%s 0.0 %.1f 0.0", ROTATE_CMD, -gMoveStep[UserId]));
+    menu_additem(MenuId, Lang("MENU_ROT_YPP"), fmt("$%s 0.0 %.1f 0.0", ROTATE_CMD, gMoveStep[UserId]));
+    menu_additem(MenuId, Lang("MENU_ROT_YMM"), fmt("$%s 0.0 %.1f 0.0", ROTATE_CMD, -gMoveStep[UserId]));
 
     menu_additem(MenuId, Lang("MENU_ROT_ZPP"), fmt("$%s 0.0 0.0 %.1f", ROTATE_CMD, gMoveStep[UserId]));
     menu_additem(MenuId, Lang("MENU_ROT_ZMM"), fmt("$%s 0.0 0.0 %.1f", ROTATE_CMD, -gMoveStep[UserId]));
