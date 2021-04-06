@@ -5,6 +5,7 @@
 #include <amxmodx>
 #include <reapi>
 #include <SprLetters>
+#include "SprLett-Core/Ver"
 
 #pragma semicolon 1
 
@@ -31,7 +32,7 @@ new const REMOVE_CMD[] = "slremove";
 new const SAVE_CMD[] = "slsave";
 
 new const PLUG_NAME[] = "[SprLett] Editor";
-new const PLUG_VER[] = "1.1.0";
+#define PLUG_VER SPRLETT_VERSION
 
 new gSelWord[MAX_PLAYERS + 1] = {nullent, ...};
 new Float:gMoveStep[MAX_PLAYERS + 1] = {1.0, ...};

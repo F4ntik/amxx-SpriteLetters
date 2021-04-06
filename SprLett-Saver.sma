@@ -6,6 +6,7 @@
 #include <reapi>
 #include <json>
 #include <SprLetters>
+#include "SprLett-Core/Ver"
 
 #define IntToStr(%1) fmt("%d",%1)
 #define CreateFile(%1) fclose(fopen(%1,"w"))
@@ -16,7 +17,7 @@
 new const CFGS_DIR[] = "/plugins/SpriteLetters/Saves/";
 
 new const PLUG_NAME[] = "[SprLett] Saver";
-new const PLUG_VER[] = "1.1.0";
+#define PLUG_VER SPRLETT_VERSION
 
 new JSON:gSaves;
 new gSavesFile[PLATFORM_MAX_PATH];

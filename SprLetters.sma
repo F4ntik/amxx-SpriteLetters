@@ -5,6 +5,7 @@
 #include <amxmodx>
 #include <reapi>
 #include <SprLetters>
+#include "SprLett-Core/Ver"
 
 #pragma semicolon 1
 
@@ -20,7 +21,7 @@
 #include "SprLett-Core/Utils"
 
 new const PLUG_NAME[] = "Sprite Letters";
-new const PLUG_VER[] = "1.1.0";
+#define PLUG_VER SPRLETT_VERSION
 
 new const INFO_TARGET_CLASSNAME[] = "info_target";
 new const LETTER_CLASSNAME[] = "SprLetters_Letter";
