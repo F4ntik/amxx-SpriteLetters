@@ -15,7 +15,7 @@ echo /
 echo /============ COMPILE =============
 echo /
 
-for ..\ %%F in (*.sma) do (
+for /R ..\ %%F in (*.sma) do (
     echo / /
     echo / / Compile %%~nF:
     echo / /
