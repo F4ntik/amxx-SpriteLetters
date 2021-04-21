@@ -69,6 +69,11 @@ enum _:SprLett_Params{
      * Расстояние между буквами.
      */
     Float:SL_P_Offset,
+    
+    /**
+     * Режим рендера букв.
+     */
+    SL_P_RenderMode,
 }
 
 /**
@@ -84,6 +89,11 @@ enum _:SprLett_ParamsVec{
      * Направление букв
      */
     SL_P_Angles,
+    
+    /**
+     * Цвет рендера букв
+     */
+    SL_P_Color,
 }
 
 /**

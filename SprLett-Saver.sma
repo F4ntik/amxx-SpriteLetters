@@ -130,7 +130,7 @@ SaveToFile(){
 
 JSON:WordToJson(const WordEnt){
     new JSON:WordObj = json_init_object();
-    new Float:Vec[3], Str[WORD_MAX_LENGTH], Float:Fl;
+    new Float:Vec[3], Str[WORD_MAX_LENGTH], Float:Fl, i;
 
     get_entvar(WordEnt, var_origin, Vec);
     json_object_set_vector(WordObj, "Origin", Vec);
@@ -140,6 +140,9 @@ JSON:WordToJson(const WordEnt){
 
     get_entvar(WordEnt, var_SL_WordDir, Vec);
     json_object_set_vector(WordObj, "Dir", Vec);
+
+    get_entvar(WordEnt, var_rendercolor, Vec);
+    json_object_set_vector(WordObj, "Color", Vec);
 
     get_entvar(WordEnt, var_SL_WordText, Str, charsmax(Str));
     json_object_set_string(WordObj, "Text", Str);
@@ -153,11 +156,17 @@ JSON:WordToJson(const WordEnt){
     Fl = get_entvar(WordEnt, var_SL_WordOffset);
     json_object_set_real(WordObj, "Offset", Fl);
 
+    Fl = get_entvar(WordEnt, var_renderamt);
+    json_object_set_real(WordObj, "Alpha", Fl);
+
+    i = get_entvar(WordEnt, var_rendermode);
+    json_object_set_number(WordObj, "RenderMode", i);
+
     return WordObj;
 }
 
 JsonToWord(const JSON:WordObj, const WordEnt){
-    new Float:Vec[3], Str[WORD_MAX_LENGTH], Float:Fl;
+    new Float:Vec[3], Str[WORD_MAX_LENGTH], Float:Fl, i;
 
     json_object_get_vector(WordObj, "Origin", Vec);
     set_entvar(WordEnt, var_origin, Vec);
@@ -167,6 +176,9 @@ JsonToWord(const JSON:WordObj, const WordEnt){
 
     json_object_get_vector(WordObj, "Dir", Vec);
     set_entvar(WordEnt, var_SL_WordDir, Vec);
+
+    json_object_get_vector(WordObj, "Color", Vec);
+    set_entvar(WordEnt, var_rendercolor, Vec);
 
     json_object_get_string(WordObj, "Text", Str, charsmax(Str));
     set_entvar(WordEnt, var_SL_WordText, Str);
@@ -179,6 +191,12 @@ JsonToWord(const JSON:WordObj, const WordEnt){
 
     Fl = json_object_get_real(WordObj, "Offset");
     set_entvar(WordEnt, var_SL_WordOffset, Fl);
+
+    Fl = json_object_get_real(WordObj, "Alpha");
+    set_entvar(WordEnt, var_renderamt, Fl);
+
+    i = json_object_get_number(WordObj, "RenderMode");
+    set_entvar(WordEnt, var_rendermode, i);
 
     return WordEnt;
 }
@@ -195,11 +213,16 @@ JSON:json_init_vector(const Float:Vec[], const Size = 3){
 }
 
 json_get_vector(const JSON:Item, Float:Vec[], const Size = 3){
-    for(new i = 0; i < Size; i++)
-        Vec[i] = json_array_get_real(Item, i);
+    if(!json_is_array(Item))
+        for(new i = 0; i < Size; i++)
+            Vec[i] = 0.0;
+    else
+        for(new i = 0; i < Size; i++)
+            Vec[i] = json_array_get_real(Item, i);
 }
 
 json_object_get_vector(const JSON:Obj, const Name[], Float:Vec[], const Size = 3, const bool:DotNot = false){
     new JSON:Item = json_object_get_value(Obj, Name, DotNot);
     json_get_vector(Item, Vec, Size);
+    json_free(Item);
 }

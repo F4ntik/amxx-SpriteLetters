@@ -35,13 +35,15 @@ new CHARSET_DEFAULT_NAME[32] = "Default";
 #define IsWordOrLetter(%1) (IsLetter(%1)||IsWord(%1))
 
 new SprParams[SprLett_Params] = {
-    1.0,   // SL_P_Scale
-    255.0, // SL_P_Alpha
-    9.0,   // SL_P_Size
-    18.0,  // SL_P_Offset
+    1.0,                // SL_P_Scale
+    255.0,              // SL_P_Alpha
+    9.0,                // SL_P_Size
+    18.0,               // SL_P_Offset
+    kRenderTransAdd,    // SL_P_RenderMode
 };
 new Float:SprWordDir[3] = {1.0, 0.0, 0.0};
 new Float:SprAngles[3] = {0.0, 0.0, 0.0};
+new Float:SprColor[3] = {255.0, 255.0, 255.0};
 new SprCharset[SprLett_CharsetData];
 
 new bool:EditMode = false;
@@ -105,15 +107,20 @@ InitWord(const Word[], const Float:Origin[3]){
         return nullent;
         
     set_entvar(WordEnt, var_classname, WORD_CLASSNAME);
+
     set_entvar(WordEnt, var_origin, Origin);
     set_entvar(WordEnt, var_angles, SprAngles);
     set_entvar(WordEnt, var_scale, SprParams[SL_P_Scale]);
-    set_entvar(WordEnt, var_renderamt, SprParams[SL_P_Alpha]);
     set_entvar(WordEnt, var_LetterSize, SprParams[SL_P_Size]);
     set_entvar(WordEnt, var_WordOffset, SprParams[SL_P_Offset]);
     set_entvar(WordEnt, var_WordDir, SprWordDir);
+
     set_entvar(WordEnt, var_WordText, Word);
     set_entvar(WordEnt, var_WordCharset, SprCharset[SL_CD_Name]);
+
+    set_entvar(WordEnt, var_renderamt, SprParams[SL_P_Alpha]);
+    set_entvar(WordEnt, var_rendercolor, SprColor);
+    set_entvar(WordEnt, var_rendermode, SprParams[SL_P_RenderMode]);
 
     return WordEnt;
 }
@@ -183,8 +190,10 @@ BuildWord(const WordEnt){
 MakeWordLetter(const WordEnt, const LetterEnt){
     SetEntSize(LetterEnt, get_entvar(WordEnt, var_LetterSize));
     copy_entvar_num(WordEnt, var_renderamt, LetterEnt);
+    copy_entvar_num(WordEnt, var_rendermode, LetterEnt);
     copy_entvar_num(WordEnt, var_scale, LetterEnt);
     copy_entvar_vec(WordEnt, var_angles, LetterEnt);
+    copy_entvar_vec(WordEnt, var_rendercolor, LetterEnt);
 
     set_entvar(LetterEnt, var_WordEnt, WordEnt);
 }
@@ -222,13 +231,14 @@ CreateLetter(const Letter[LETTER_SIZE], const Float:Origin[3], const bool:ForWor
     set_entvar(Ent, var_movetype, MOVETYPE_FLY);
     set_entvar(Ent, var_solid, EditMode ? SOLID_BBOX : SOLID_NOT);
     set_entvar(Ent, var_origin, Origin);
-    set_entvar(Ent, var_rendermode, kRenderTransAdd);
     set_entvar(Ent, var_LetterText, Letter);
 
     if(!ForWord){
+        set_entvar(Ent, var_rendermode, SprParams[SL_P_RenderMode]);
+        set_entvar(Ent, var_rendercolor, SprColor);
         SetLetterCharset(Ent, SprCharset);
         set_entvar(Ent, var_renderamt, SprParams[SL_P_Alpha]);
-        SetEntSize(Ent, SprParams[SL_P_Size]*SprParams[SL_P_Scale]);
+        SetEntSize(Ent, SprParams[SL_P_Size] / 2);
         set_entvar(Ent, var_angles, SprAngles);
         set_entvar(Ent, var_scale, SprParams[SL_P_Scale]);
     }
