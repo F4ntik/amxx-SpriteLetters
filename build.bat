@@ -10,13 +10,17 @@ xcopy .\resources\* .\build\SpriteLetters\ /s /e /y
 xcopy .\include .\build\SpriteLetters\addons\amxmodx\scripting\include\ /s /e /y
 xcopy .\SprLett-Core .\build\SpriteLetters\addons\amxmodx\scripting\SprLett-Core\ /s /e /y
 xcopy .\SprLett-Editor .\build\SpriteLetters\addons\amxmodx\scripting\SprLett-Editor\ /s /e /y
-xcopy .\amxmodx .\build\SpriteLetters\addons\amxmodx\ /s /e /y
 
-for /R %%G in (*.sma) do (
-    if exist .\%%~nG.sma (
-        copy .\%%~nG.sma .\build\SpriteLetters\addons\amxmodx\scripting\
-    )   
+set PLUGINS_LIST=.\amxmodx\configs\plugins-SprLett.ini
+echo. 2>%PLUGINS_LIST%
+
+for %%G in (*.sma) do (
+     echo %%~nG
+     echo %%~nG.amxx>>%PLUGINS_LIST%
+     copy .\%%~nG.sma .\build\SpriteLetters\addons\amxmodx\scripting\
 )
+
+xcopy .\amxmodx .\build\SpriteLetters\addons\amxmodx\ /s /e /y
 
 del .\SpriteLetters.zip
 cd .\build

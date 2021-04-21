@@ -1,3 +1,4 @@
 *.amxx
 *.zip
 build/
+/plugins/
