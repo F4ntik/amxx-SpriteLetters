@@ -25,7 +25,7 @@ Menu_Move(const UserId){
     menu_additem(MenuId, Lang("MENU_MOVE_YMM"), fmt("$%s 0.0 %.1f 0.0", MOVE_CMD, -gMoveStep[UserId]));
 
     menu_additem(MenuId, Lang("MENU_MOVE_ZPP"), fmt("$%s 0.0 0.0 %.1f", MOVE_CMD, gMoveStep[UserId]));
-    menu_additem(MenuId, Lang("MENU_MOVE_ZMM"), fmt("$%s 0.0 0.0 %.1f^n", MOVE_CMD, -gMoveStep[UserId]));
+    menu_additem(MenuId, Lang("MENU_MOVE_ZMM"), fmt("$%s 0.0 0.0 %.1f", MOVE_CMD, -gMoveStep[UserId]));
     
     menu_addtext(MenuId, fmt("%l", "MENU_MOVE_CURRENT_VALUE", Origin[0], Origin[1], Origin[2]), 0);
 
