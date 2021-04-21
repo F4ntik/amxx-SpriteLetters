@@ -3,6 +3,8 @@ new const MOVEMENU_CMD[] = "slmovemenu";
 new const ROTATEMENU_CMD[] = "slrotatemenu";
 new const ATTRSMENU_CMD[] = "slattrsmenu";
 new const DIRMENU_CMD[] = "sldirmenu";
+new const RENDERMENU_CMD[] = "slrendermenu";
+new const COLORMENU_CMD[] = "slcolormenu";
 
 MenuCmds_Init(){
     RegisterClCmds(MAINMENU_CMD, "@Cmd_MainMenu");
@@ -11,6 +13,8 @@ MenuCmds_Init(){
     RegisterClCmds(ROTATEMENU_CMD, "@Cmd_RotateMenu");
     RegisterClCmds(DIRMENU_CMD, "@Cmd_DirMenu");
     RegisterClCmds(ATTRSMENU_CMD, "@Cmd_AttrsMenu");
+    RegisterClCmds(RENDERMENU_CMD, "@Cmd_RenderMenu");
+    RegisterClCmds(COLORMENU_CMD, "@Cmd_ColorMenu");
 }
 
 @Cmd_MainMenu(const UserId){
@@ -42,6 +46,18 @@ MenuCmds_Init(){
     Menu_Attrs(UserId);
 }
 
+@Cmd_RenderMenu(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CHECK_WORD(UserId)
+    Menu_Render(UserId);
+}
+
+@Cmd_ColorMenu(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CHECK_WORD(UserId)
+    Menu_Color(UserId);
+}
+
 bool:_CmdMenuHandle(const UserId, const MenuId, const ItemId, const BackToMain = true){
     if(ItemId == MENU_EXIT){
         menu_destroy(MenuId);
@@ -61,5 +77,7 @@ bool:_CmdMenuHandle(const UserId, const MenuId, const ItemId, const BackToMain =
 #include "SprLett-Editor/Menus/Main"
 #include "SprLett-Editor/Menus/Move"
 #include "SprLett-Editor/Menus/Rotate"
-#include "SprLett-Editor/Menus/Attrs"
 #include "SprLett-Editor/Menus/Direction"
+#include "SprLett-Editor/Menus/Color"
+#include "SprLett-Editor/Menus/Render"
+#include "SprLett-Editor/Menus/Attrs"

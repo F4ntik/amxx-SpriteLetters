@@ -26,6 +26,7 @@ Menu_Attrs(const UserId){
     menu_additem(MenuId, Lang("MENU_OTHER_REMOVE_WORD"), fmt("#%s", REMOVE_CMD));
     
     menu_addblank2(MenuId);
+    menu_addblank2(MenuId);
 
     menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_BACK"));
     menu_setprop(MenuId, MPROP_EXIT, MEXIT_FORCE);

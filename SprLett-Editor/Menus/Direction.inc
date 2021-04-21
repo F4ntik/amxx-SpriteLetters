@@ -14,7 +14,7 @@ Menu_Direction(const UserId){
     new Float:Dir[3];
     get_entvar(gSelWord[UserId], var_SL_WordDir, Dir);
 
-    menu_additem(MenuId, fmt("%l", "MENUS_ACTION", Lang("MENU_DIR_ACTION")), fmt("#%s", ATTRSMENU_CMD));
+    menu_additem(MenuId, fmt("%l", "MENUS_ACTION", Lang("MENU_DIR_ACTION")), fmt("#%s", COLORMENU_CMD));
 
     menu_additem(MenuId, fmt("%l", "MENUS_STEP", gMoveStep[UserId]), fmt("$%s", STEPEX_CMD));
 
@@ -26,6 +26,7 @@ Menu_Direction(const UserId){
     
     menu_addtext(MenuId, fmt("%l", "MENU_DIR_CURRENT_VALUE", Dir[0], Dir[1]), 0);
     
+    menu_addblank2(MenuId);
     menu_addblank2(MenuId);
     menu_addblank2(MenuId);
 

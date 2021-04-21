@@ -28,6 +28,8 @@ Menu_Rotate(const UserId){
     menu_additem(MenuId, Lang("MENU_ROT_ZMM"), fmt("$%s 0.0 0.0 %.1f", ROTATE_CMD, -gMoveStep[UserId]));
     
     menu_addtext(MenuId, fmt("%l", "MENU_ROT_CURRENT_VALUE", Angles[0], Angles[1], Angles[2]), 0);
+    
+    menu_addblank2(MenuId);
 
     menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_BACK"));
     menu_setprop(MenuId, MPROP_EXIT, MEXIT_FORCE);

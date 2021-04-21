@@ -31,6 +31,11 @@ new const WRITE_CMD[] = "slwrite";
 new const REMOVE_CMD[] = "slremove";
 new const SAVE_CMD[] = "slsave";
 
+new const RENDER_TYPE_CMD[] = "slrendtype";
+new const RENDER_TYPE_EX_CMD[] = "slrendtypeex";
+new const ALPHA_CMD[] = "slalpha";
+new const COLOR_CMD[] = "slcolor";
+
 new const PLUG_NAME[] = "[SprLett] Editor";
 #define PLUG_VER SPRLETT_VERSION
 
@@ -61,7 +66,61 @@ public plugin_init(){
     RegisterClCmds(REMOVE_CMD, "@Cmd_Remove");
     RegisterClCmds(SAVE_CMD, "@Cmd_Save");
 
+    RegisterClCmds(RENDER_TYPE_CMD, "@Cmd_RenderType");
+    RegisterClCmds(RENDER_TYPE_EX_CMD, "@Cmd_RenderTypeEx");
+    RegisterClCmds(ALPHA_CMD, "@Cmd_Alpha");
+    RegisterClCmds(COLOR_CMD, "@Cmd_Color");
+
     MenuCmds_Init();
+}
+
+@Cmd_Color(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CMD_CHECK_ARGC(UserId, 3)
+    CHECK_WORD(UserId)
+
+    new Float:Color[3];
+    get_entvar(gSelWord[UserId], var_rendercolor, Color);
+    Color[0] = floatclamp(Color[0] + read_argv_float(NULL_ARG+1), 0.0, 255.0);
+    Color[1] = floatclamp(Color[1] + read_argv_float(NULL_ARG+2), 0.0, 255.0);
+    Color[2] = floatclamp(Color[2] + read_argv_float(NULL_ARG+3), 0.0, 255.0);
+    set_entvar(gSelWord[UserId], var_rendercolor, Color);
+
+    SprLett_RebuildWord(gSelWord[UserId]);
+}
+
+@Cmd_RenderType(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CMD_CHECK_ARGC(UserId, 1)
+    CHECK_WORD(UserId)
+    
+    set_entvar(gSelWord[UserId], var_rendermode, clamp(read_argv_int(NULL_ARG+1), kRenderNormal, kRenderTransAdd));
+
+    SprLett_RebuildWord(gSelWord[UserId]);
+}
+
+@Cmd_RenderTypeEx(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CHECK_WORD(UserId)
+
+    new RendType = get_entvar(gSelWord[UserId], var_rendermode);
+    RendType++;
+    if(RendType > kRenderTransAdd)
+        RendType = kRenderNormal;
+
+    client_cmd(UserId, fmt("%s %d", RENDER_TYPE_CMD, RendType));
+}
+
+@Cmd_Alpha(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CMD_CHECK_ARGC(UserId, 1)
+    CHECK_WORD(UserId)
+
+    new Float:Alpha = Float:get_entvar(gSelWord[UserId], var_renderamt);
+    Alpha = floatclamp(Alpha + read_argv_float(NULL_ARG+1), 0.0, 255.0);
+    set_entvar(gSelWord[UserId], var_renderamt, Alpha);
+    
+    SprLett_RebuildWord(gSelWord[UserId]);
 }
 
 @Cmd_EditMode(const UserId){
