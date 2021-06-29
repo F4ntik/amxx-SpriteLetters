@@ -43,8 +43,9 @@ public plugin_natives(){
 
 @_WordIterNext(){
     enum {Arg_Ent = 1}
-    new Ent = get_param(Arg_Ent);
-    set_param_byref(Arg_Ent, WordIterNext(Ent));
+    new Ent = get_param_byref(Arg_Ent);
+
+    set_param_byref(Arg_Ent, (Ent = WordIterNext(Ent)));
     return Ent;
 }
 
