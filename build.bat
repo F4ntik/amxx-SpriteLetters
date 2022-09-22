@@ -7,27 +7,13 @@ if exist "%INCLUDES_PATH%" (
     call :copy %INCLUDES_PATH%\*, %AMXX_COMPILER_INCLUDES_PATH%
 )
 
-echo Prepare files...
-call :makedir %BUILD_AMXMODX_PATH%
-call :copy "%AMXMODX_PATH%\*", "%BUILD_AMXMODX_PATH%"
-
-if "%PACKAGE_README_USE%" == "1" (
-    call :copy "%README_FILE%", "%BUILD_ROOT_PATH%"
-)
-
-if "%PACKAGE_ASSETS_USE%" == "1" (
-    call :makedir %BUILD_ASSETS_PATH%
-    call :copy %ASSETS_PATH%\* %BUILD_ASSETS_PATH%
-)
-
 echo Cleanup old compiled plugins...
 call :deldir %COMPILER_OUTPUT_PATH%
+call :deldir %AMXMODX_PATH%\plugins
 
 if not "%PACKAGE_COMPILED_PLUGINS_USE%" == "1" goto after-compile
 
 echo Prepare for compiling plugins...
-mkdir %COMPILER_OUTPUT_PATH%
-cd %COMPILER_OUTPUT_PATH%
 
 call :makedir %PLUGINS_LIST_PATH%
 call :del %PLUGINS_LIST%
@@ -37,6 +23,8 @@ if "%PACKAGE_PLUINGS_LIST_USE%" == "1" (
 
 echo Compile plugins...
 
+call :makedir %COMPILER_OUTPUT_PATH%
+cd %COMPILER_OUTPUT_PATH%
 for /R %AMXMODX_PATH%\scripting %%F in (*.sma) do (
     echo.
     echo Compile %%~nF:
@@ -54,14 +42,25 @@ for /R %AMXMODX_PATH%\scripting %%F in (*.sma) do (
         exit /b %errorlevel%
     )
 
-    if "%PACKAGE_PLUINGS_LIST_USE%"=="1" (
+    if "%PACKAGE_PLUINGS_LIST_USE%" == "1" (
        echo %%~nF.amxx>>%PLUGINS_LIST%
     )
 )
-
 cd %ROOT_PATH%
-
 :after-compile
+
+echo Prepare files...
+call :makedir %BUILD_AMXMODX_PATH%
+call :copy "%AMXMODX_PATH%\*", "%BUILD_AMXMODX_PATH%"
+
+if "%PACKAGE_README_USE%" == "1" (
+    call :copy "%README_FILE%", "%BUILD_ROOT_PATH%"
+)
+
+if "%PACKAGE_ASSETS_USE%" == "1" (
+    call :makedir %BUILD_ASSETS_PATH%
+    call :copy %ASSETS_PATH%\* %BUILD_ASSETS_PATH%
+)
 
 echo Compress files to ZIP archive...
 call :del %ZIP_FILE%
