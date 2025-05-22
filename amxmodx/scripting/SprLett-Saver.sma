@@ -144,13 +144,32 @@ JSON:WordToJson(const WordEnt){
     get_entvar(WordEnt, var_rendercolor, Vec);
     json_object_set_vector(WordObj, "Color", Vec);
 
-    get_entvar(WordEnt, var_SL_WordText, Str, charsmax(Str));
-    json_object_set_string(WordObj, "Text", Str);
+    // Handle Text field based on marquee status
+    new marqueeWidth_val = get_entvar(WordEnt, var_iuser2); // var_MarqueeWidth
+    if (marqueeWidth_val > 0) {
+        get_entvar(WordEnt, var_netname, Str, charsmax(Str)); // var_MarqueeText (full text)
+        json_object_set_string(WordObj, "Text", Str);
 
-    get_entvar(WordEnt, var_SL_WordCharset, Str, charsmax(Str));
+        // Save other marquee properties
+        i = get_entvar(WordEnt, var_iuser1); // var_MarqueeID
+        json_object_set_number(WordObj, "MarqueeID", i);
+        json_object_set_number(WordObj, "MarqueeWidth", marqueeWidth_val); // Already have it
+
+        Fl = get_entvar(WordEnt, var_fuser3); // var_MarqueeSpeed
+        json_object_set_real(WordObj, "MarqueeSpeed", Fl);
+        
+        Fl = get_entvar(WordEnt, var_fuser4); // var_MarqueeOffset
+        json_object_set_real(WordObj, "MarqueeOffset", Fl);
+
+    } else { // Not a marquee, save var_WordText as "Text"
+        get_entvar(WordEnt, var_SL_WordText, Str, charsmax(Str)); // var_message
+        json_object_set_string(WordObj, "Text", Str);
+    }
+
+    get_entvar(WordEnt, var_SL_WordCharset, Str, charsmax(Str)); // var_noise
     json_object_set_string(WordObj, "Charset", Str);
 
-    Fl = get_entvar(WordEnt, var_SL_LetterSize);
+    Fl = get_entvar(WordEnt, var_SL_LetterSize); // var_fuser1 (for letters, but var_LetterSize for words)
     json_object_set_real(WordObj, "LetterSize", Fl);
 
     Fl = get_entvar(WordEnt, var_SL_WordOffset);
@@ -180,13 +199,33 @@ JsonToWord(const JSON:WordObj, const WordEnt){
     json_object_get_vector(WordObj, "Color", Vec);
     set_entvar(WordEnt, var_rendercolor, Vec);
 
+    // Load "Text" (which is full text for marquees, display text for non-marquees)
     json_object_get_string(WordObj, "Text", Str, charsmax(Str));
-    set_entvar(WordEnt, var_SL_WordText, Str);
+    set_entvar(WordEnt, var_SL_WordText, Str); // Set to var_message for BuildWord
 
+    // Load marquee properties (they will default to 0/empty if not in JSON)
+    new marqueeId_val = json_object_get_number(WordObj, "MarqueeID");
+    new loadedMarqueeWidth = json_object_get_number(WordObj, "MarqueeWidth");
+    new Float:marqueeSpeed_val = json_object_get_real(WordObj, "MarqueeSpeed");
+    new Float:marqueeOffset_val = json_object_get_real(WordObj, "MarqueeOffset");
+
+    set_entvar(WordEnt, var_iuser1, marqueeId_val);     // var_MarqueeID
+    set_entvar(WordEnt, var_iuser2, loadedMarqueeWidth);  // var_MarqueeWidth
+    set_entvar(WordEnt, var_fuser3, marqueeSpeed_val); // var_MarqueeSpeed
+    set_entvar(WordEnt, var_fuser4, marqueeOffset_val);// var_MarqueeOffset
+
+    if (loadedMarqueeWidth > 0) {
+        // It's a marquee, so the "Text" we loaded is the full MarqueeText
+        set_entvar(WordEnt, var_netname, Str); // var_MarqueeText
+    } else {
+        // Not a marquee, ensure MarqueeText is empty
+        set_entvar(WordEnt, var_netname, "");
+    }
+    
     json_object_get_string(WordObj, "Charset", Str, charsmax(Str));
-    set_entvar(WordEnt, var_SL_WordCharset, Str);
+    set_entvar(WordEnt, var_SL_WordCharset, Str); // var_noise
 
-    Fl = json_object_get_real(WordObj, "LetterSize");
+    Fl = json_object_get_real(WordObj, "LetterSize"); // var_fuser1 (for letters, but var_LetterSize for words)
     set_entvar(WordEnt, var_SL_LetterSize, Fl);
 
     Fl = json_object_get_real(WordObj, "Offset");

@@ -18,10 +18,40 @@
 #define var_LetterSize var_fuser1
 #define var_LetterText var_message
 #define var_LetterCharset var_noise
+
+// Marquee feature variables
+#define var_MarqueeID var_iuser1
+#define var_MarqueeWidth var_iuser2
+#define var_MarqueeSpeed var_fuser3
+#define var_MarqueeText var_netname
+#define var_MarqueeOffset var_fuser4
+
 #include "SprLett-Core/Utils"
+
+// Helper function to trim leading/trailing spaces from a string
+stock trim_string(string[], maxlength) {
+    new len = strlen(string);
+    // Trim trailing spaces
+    for (new i = len - 1; i >= 0; i--) {
+        if (string[i] == ' ') string[i] = EOS;
+        else break;
+    }
+    len = strlen(string);
+    // Trim leading spaces
+    new start = 0;
+    while (string[start] == ' ' && start < len) start++;
+    if (start > 0) {
+        strcopy(string, maxlength, string[start]);
+    }
+}
 
 new const PLUG_NAME[] = "Sprite Letters";
 #define PLUG_VER SPRLETT_VERSION
+
+// Marquee feature default values
+#define DEFAULT_MARQUEE_WIDTH 10
+#define DEFAULT_MARQUEE_SPEED 5.0
+#define MARQUEE_UPDATE_INTERVAL 0.1 // For 10 updates per second
 
 new const INFO_TARGET_CLASSNAME[] = "info_target";
 new const LETTER_CLASSNAME[] = "SprLetters_Letter";
@@ -63,6 +93,14 @@ public plugin_precache(){
 }
 
 public plugin_init(){
+    set_task(MARQUEE_UPDATE_INTERVAL, "Marquee_Think", .flags = TASK_REPEAT); // Register marquee think task
+
+    // Register server commands for marquee control
+    register_srvcmd("sl_marquee_text", "Cmd_Marquee_Text", -1, "Sets text for marquees by ID. Usage: sl_marquee_text <id> <text>");
+    register_srvcmd("sl_marquee_width", "Cmd_Marquee_Width", -1, "Sets width for marquees by ID. Usage: sl_marquee_width <id> <width>");
+    register_srvcmd("sl_marquee_speed", "Cmd_Marquee_Speed", -1, "Sets speed for marquees by ID. Usage: sl_marquee_speed <id> <speed>");
+    register_srvcmd("sl_marquee_count_ids", "Cmd_Marquee_Count_IDs", -1, "Counts unique active marquee IDs.");
+
     server_print(
         "[%s v%s] %d charsets loaded. Default charset: '%s'.",
         PLUG_NAME, PLUG_VER,
@@ -101,7 +139,7 @@ EditToggle(const bool:State){
  *
  * @return  Индекс ентити слова
  */
-InitWord(const Word[], const Float:Origin[3]){
+InitWord(const Word[], const Float:Origin[3], MarqueeID = 0, MarqueeWidth = 0, Float:MarqueeSpeed = 0.0){ // Added marquee params with defaults
     new WordEnt = rg_create_entity(INFO_TARGET_CLASSNAME);
     if(is_nullent(WordEnt))
         return nullent;
@@ -112,17 +150,210 @@ InitWord(const Word[], const Float:Origin[3]){
     set_entvar(WordEnt, var_angles, SprAngles);
     set_entvar(WordEnt, var_scale, SprParams[SL_P_Scale]);
     set_entvar(WordEnt, var_LetterSize, SprParams[SL_P_Size]);
-    set_entvar(WordEnt, var_WordOffset, SprParams[SL_P_Offset]);
+    set_entvar(WordEnt, var_WordOffset, SprParams[SL_P_Offset]); // This is inter-letter spacing
     set_entvar(WordEnt, var_WordDir, SprWordDir);
 
-    set_entvar(WordEnt, var_WordText, Word);
+    // Set original text to var_WordText (for display) and var_MarqueeText (for full source)
+    set_entvar(WordEnt, var_WordText, Word); // Current displayed portion
+    set_entvar(WordEnt, var_MarqueeText, Word); // Full text for marquee
+
     set_entvar(WordEnt, var_WordCharset, SprCharset[SL_CD_Name]);
 
     set_entvar(WordEnt, var_renderamt, SprParams[SL_P_Alpha]);
     set_entvar(WordEnt, var_rendercolor, SprColor);
     set_entvar(WordEnt, var_rendermode, SprParams[SL_P_RenderMode]);
 
+    // Store marquee properties
+    if (MarqueeWidth > 0) { // Only set marquee properties if width is positive
+        set_entvar(WordEnt, var_MarqueeID, MarqueeID);
+        set_entvar(WordEnt, var_MarqueeWidth, MarqueeWidth);
+        set_entvar(WordEnt, var_MarqueeSpeed, MarqueeSpeed);
+        set_entvar(WordEnt, var_MarqueeOffset, 0.0);
+    } else { // Ensure they are zeroed out if not a marquee to avoid issues with reused entities
+        set_entvar(WordEnt, var_MarqueeID, 0);
+        set_entvar(WordEnt, var_MarqueeWidth, 0);
+        set_entvar(WordEnt, var_MarqueeSpeed, 0.0);
+        set_entvar(WordEnt, var_MarqueeOffset, 0.0);
+    }
+
     return WordEnt;
+}
+
+public Marquee_Think() {
+    new ent = -1;
+    // Loop through all entities that are potential "Word" entities
+    while((ent = rg_find_ent_by_class(ent, WORD_CLASSNAME)) > 0) { 
+        // Ensure it's specifically a word entity managed by this plugin. 
+        // IsWord also checks classname, but good for logical clarity.
+        if(!IsWord(ent)) 
+            continue;
+
+        new marqueeWidth = get_entvar(ent, var_MarqueeWidth);
+        if (marqueeWidth <= 0) // Not a marquee or invalid width
+            continue;
+
+        new Float:speed = get_entvar(ent, var_MarqueeSpeed);
+        if (speed <= 0.0) // Marquee is paused or has invalid speed
+            continue;
+
+        new Float:currentOffset = get_entvar(ent, var_MarqueeOffset);
+        
+        new fullText[WORD_MAX_LENGTH];
+        get_entvar(ent, var_MarqueeText, fullText, charsmax(fullText));
+
+        new fullText_EffectiveCharLen = 0;
+        new scanIdx = 0;
+        while(fullText[scanIdx] != EOS) {
+            new charBytes = get_char_bytes(fullText[scanIdx]);
+            if (charBytes == 0) { // Should ideally not happen with valid strings
+                scanIdx++; // Skip to prevent infinite loop on malformed string
+                continue;
+            }
+            fullText_EffectiveCharLen++;
+            scanIdx += charBytes;
+            if (scanIdx >= WORD_MAX_LENGTH) break; // Safety break if string is somehow not EOS-terminated
+        }
+        
+        // If there's no text to scroll, UpdateMarquee will handle ensuring the display is empty.
+        // This check is mostly to prevent division by zero or weirdness if speed calculation depended on length.
+        if (fullText_EffectiveCharLen == 0) { 
+            UpdateMarquee(ent); 
+            continue;
+        }
+        
+        // Update offset based on speed and interval
+        // Speed is in "characters per second". Interval is in seconds.
+        currentOffset -= speed * MARQUEE_UPDATE_INTERVAL;
+
+        // If the text has fully scrolled past the left edge
+        // currentOffset represents the position of fullText[0] relative to the left window edge.
+        // When currentOffset = 0, fullText[0] is at the left edge.
+        // When currentOffset = -1, fullText[0] is one char position to the left of the window.
+        // So, when currentOffset < -fullText_EffectiveCharLen, the entire string has passed.
+        if (currentOffset < -float(fullText_EffectiveCharLen)) {
+            currentOffset = float(marqueeWidth); // Reset to starting position (fullText[0] is at the right edge of the window)
+        }
+        
+        set_entvar(ent, var_MarqueeOffset, currentOffset);
+        UpdateMarquee(ent); // Update the visible part of the word
+    }
+}
+
+/**
+ * Обновляет отображаемый текст для бегущей строки на основе смещения.
+ * Это основная функция, отвечающая за эффект "бегущей строки".
+ * Она конструирует видимую часть текста на основе полного текста и текущего смещения.
+ * currentOffsetF: позиция fullText[0] относительно левого края окна.
+ * Положительные значения: fullText[0] смещен вправо от левого края окна (еще не полностью виден).
+ * 0: fullText[0] находится у левого края окна.
+ * Отрицательные: fullText[0] смещен влево от левого края окна (уже частично или полностью проскроллен).
+ *
+ * @param WordEnt Индекс ентити слова (должно быть марки).
+ *
+ * @noreturn
+ */
+UpdateMarquee(const WordEnt) {
+    if (!IsWord(WordEnt))
+        return;
+
+    new marqueeWidth = get_entvar(WordEnt, var_MarqueeWidth);
+    if (marqueeWidth <= 0)
+        return; // Not a marquee or zero/negative width
+
+    new Float:currentOffsetF = get_entvar(WordEnt, var_MarqueeOffset);
+    new fullText[WORD_MAX_LENGTH];
+    get_entvar(WordEnt, var_MarqueeText, fullText, charsmax(fullText));
+
+    new fullText_EffectiveCharLen = 0; // Actual number of displayable characters in fullText
+    for(new scanIdx = 0; fullText[scanIdx] != EOS; ) {
+        new charBytes = get_char_bytes(fullText[scanIdx]);
+        if(charBytes == 0) { // Should not happen in well-formed string
+            scanIdx++; continue;
+        }
+        fullText_EffectiveCharLen++;
+        scanIdx += charBytes;
+    }
+
+    // Handle empty full text
+    if (fullText_EffectiveCharLen == 0) {
+        new currentDisplayedText[WORD_MAX_LENGTH];
+        get_entvar(WordEnt, var_WordText, currentDisplayedText, charsmax(currentDisplayedText));
+        if (currentDisplayedText[0] != EOS) { // If not already empty
+            set_entvar(WordEnt, var_WordText, "");
+            DestroyWord(WordEnt);
+            // No need to BuildWord if text is empty.
+        }
+        return;
+    }
+
+    new actualDisplayString[WORD_MAX_LENGTH];
+    new actualDisplayLen = 0; // Current length of actualDisplayString in bytes/cells
+    new roundedOffset = floatround(currentOffsetF); // Integer part of currentOffsetF
+
+    // Loop through each character position in the marquee window
+    for (new windowPos = 0; windowPos < marqueeWidth; ++windowPos) {
+        if (actualDisplayLen >= WORD_MAX_LENGTH - 1) { // Ensure buffer for EOS and at least one char
+             break;
+        }
+
+        // Determine the logical character index from fullText that should appear at windowPos
+        // roundedOffset is the position of fullText[0] (logical) relative to the window's left edge.
+        // If roundedOffset = 0, fullText[0] is at windowPos 0.
+        // If roundedOffset = 1, fullText[0] is at windowPos 1. (i.e. one space before it)
+        // If roundedOffset = marqueeWidth, fullText[0] is at windowPos marqueeWidth (i.e. just off right edge)
+        // If roundedOffset = -1, fullText[1] (logical) is at windowPos 0.
+        new charIndexInFullText = windowPos - roundedOffset;
+
+        if (charIndexInFullText >= 0 && charIndexInFullText < fullText_EffectiveCharLen) {
+            // This character is from fullText. Find its starting byte position.
+            new bytePosInFullText = 0;
+            new currentActualCharIndex = 0; // Counter for actual characters iterated in fullText
+
+            // Iterate through fullText to find the starting byte of the charIndexInFullText-th character
+            while (fullText[bytePosInFullText] != EOS && currentActualCharIndex < charIndexInFullText) {
+                new charBytesScanned = get_char_bytes(fullText[bytePosInFullText]);
+                if (charBytesScanned == 0) { // Should not happen with valid strings
+                    bytePosInFullText++; // Gracefully handle, avoid infinite loop
+                    continue;
+                }
+                bytePosInFullText += charBytesScanned;
+                currentActualCharIndex++;
+            }
+
+            // Check if we successfully found the character's starting byte within fullText
+            if (fullText[bytePosInFullText] != EOS && currentActualCharIndex == charIndexInFullText) {
+                new charBytesToCopy = get_char_bytes(fullText[bytePosInFullText]);
+                if (charBytesToCopy > 0 && actualDisplayLen + charBytesToCopy < WORD_MAX_LENGTH) {
+                    // Copy the character (multi-byte safe)
+                    for (new k = 0; k < charBytesToCopy; ++k) {
+                        actualDisplayString[actualDisplayLen + k] = fullText[bytePosInFullText + k];
+                    }
+                    actualDisplayLen += charBytesToCopy;
+                } else if (actualDisplayLen < WORD_MAX_LENGTH - 1) { // Not enough space for this char, or char is invalid
+                    actualDisplayString[actualDisplayLen++] = ' '; // Fill with a space
+                } else {
+                    break; // Not enough space in buffer even for a space
+                }
+            } else {
+                // Logical error or charIndexInFullText was past the end after iterating
+                actualDisplayString[actualDisplayLen++] = ' ';
+            }
+        } else {
+            // This character position in the window is a leading/trailing space
+            actualDisplayString[actualDisplayLen++] = ' ';
+        }
+    }
+    actualDisplayString[actualDisplayLen] = EOS; // Null-terminate the constructed string
+
+    // Compare with current displayed text and update if different
+    new currentDisplayedText[WORD_MAX_LENGTH];
+    get_entvar(WordEnt, var_WordText, currentDisplayedText, charsmax(currentDisplayedText));
+
+    if (!equal(currentDisplayedText, actualDisplayString)) {
+        set_entvar(WordEnt, var_WordText, actualDisplayString);
+        DestroyWord(WordEnt);
+        BuildWord(WordEnt);
+    }
 }
 
 /**
@@ -359,6 +590,182 @@ WordIterNext(&Iterator){
     ) Iterator = nullent;
 
     return Iterator;
+}
+
+// Server Command Handlers for Marquee Control
+
+public Cmd_Marquee_Text(id, level, cid) {
+    if (get_argc() < 3) {
+        console_print(id, "Usage: sl_marquee_text <id> <text>");
+        return PLUGIN_HANDLED;
+    }
+
+    new targetId_str[32];
+    get_argv(1, targetId_str, charsmax(targetId_str));
+    new targetId = str_to_num(targetId_str);
+
+    if (targetId == 0) {
+        console_print(id, "Error: Marquee ID cannot be 0 for this command.");
+        return PLUGIN_HANDLED;
+    }
+
+    new text[WORD_MAX_LENGTH]; text[0] = EOS;
+    new arg[128]; 
+
+    for (new i = 2; i < get_argc(); i++) {
+        get_argv(i, arg, charsmax(arg));
+        add(text, charsmax(text), arg);
+        if (i < get_argc() - 1) {
+            add(text, charsmax(text), " ");
+        }
+    }
+    trim_string(text, charsmax(text));
+
+    new bool:found = false;
+    new ent = -1;
+    while((ent = rg_find_ent_by_class(ent, WORD_CLASSNAME)) > 0) {
+        if(!IsWord(ent)) continue;
+        if (get_entvar(ent, var_MarqueeID) == targetId && get_entvar(ent, var_MarqueeWidth) > 0) {
+            set_entvar(ent, var_MarqueeText, text);
+            // Reset offset to the right edge of the marquee window, so it starts scrolling in.
+            set_entvar(ent, var_MarqueeOffset, float(get_entvar(ent, var_MarqueeWidth))); 
+            UpdateMarquee(ent);
+            found = true;
+        }
+    }
+
+    if (found) {
+        console_print(id, "Marquee ID %d text set to: ^"%s^"", targetId, text);
+    } else {
+        console_print(id, "No active marquee found with ID %d.", targetId);
+    }
+    return PLUGIN_HANDLED;
+}
+
+public Cmd_Marquee_Width(id, level, cid) {
+    if (get_argc() != 3) {
+        console_print(id, "Usage: sl_marquee_width <id> <width>");
+        return PLUGIN_HANDLED;
+    }
+
+    new targetId_str[32];
+    get_argv(1, targetId_str, charsmax(targetId_str));
+    new targetId = str_to_num(targetId_str);
+    
+    new width_str[32];
+    get_argv(2, width_str, charsmax(width_str));
+    new width = str_to_num(width_str);
+
+    if (targetId == 0 && width != 0) { // Allow ID 0 only if disabling all marquees by width
+         console_print(id, "Error: Marquee ID cannot be 0 unless setting width to 0.");
+         return PLUGIN_HANDLED;
+    }
+    if (width < 0) width = 0; // Cannot be negative, 0 means disable marquee
+
+    new bool:found_any = false;
+    new ent = -1;
+    while((ent = rg_find_ent_by_class(ent, WORD_CLASSNAME)) > 0) {
+        if(!IsWord(ent)) continue;
+
+        if (get_entvar(ent, var_MarqueeID) == targetId || (targetId == 0 && width == 0) ) { // Target specific ID, or ID 0 to disable all
+            new oldWidth = get_entvar(ent, var_MarqueeWidth);
+            set_entvar(ent, var_MarqueeWidth, width);
+
+            if (width > 0 && oldWidth <= 0) { // Marquee just enabled or re-enabled
+                set_entvar(ent, var_MarqueeOffset, float(width)); // Reset offset to start from right
+                if (get_entvar(ent, var_MarqueeSpeed) <= 0.0) {
+                    set_entvar(ent, var_MarqueeSpeed, DEFAULT_MARQUEE_SPEED); // Set default speed if not set
+                }
+            }
+            // If width is set to 0, Marquee_Think will ignore it, and UpdateMarquee might clear the text.
+            // Or, explicitly clear text if width becomes 0
+            if (width == 0 && oldWidth > 0) {
+                 set_entvar(ent, var_WordText, ""); // Clear displayed text
+                 // UpdateMarquee might not be needed if BuildWord/DestroyWord is called,
+                 // but to be safe and ensure visual update:
+                 DestroyWord(ent); // Destroy letters
+                 BuildWord(ent);   // Rebuild (will be empty)
+            } else {
+                UpdateMarquee(ent); // Update display for other cases (e.g. width change)
+            }
+            found_any = true;
+        }
+    }
+    if(found_any){
+        if(targetId == 0 && width == 0) console_print(id, "All marquees disabled by setting width to 0.");
+        else console_print(id, "Marquee ID %d width set to %d.", targetId, width);
+    } else {
+        console_print(id, "No marquee found with ID %d.", targetId);
+    }
+    return PLUGIN_HANDLED;
+}
+
+public Cmd_Marquee_Speed(id, level, cid) {
+    if (get_argc() != 3) {
+        console_print(id, "Usage: sl_marquee_speed <id> <speed>");
+        return PLUGIN_HANDLED;
+    }
+
+    new targetId_str[32];
+    get_argv(1, targetId_str, charsmax(targetId_str));
+    new targetId = str_to_num(targetId_str);
+
+    new speed_str[32];
+    get_argv(2, speed_str, charsmax(speed_str));
+    new Float:speed = str_to_float(speed_str);
+
+    if (targetId == 0) {
+        console_print(id, "Error: Marquee ID cannot be 0 for this command.");
+        return PLUGIN_HANDLED;
+    }
+
+    new bool:found = false;
+    new ent = -1;
+    while((ent = rg_find_ent_by_class(ent, WORD_CLASSNAME)) > 0) {
+        if(!IsWord(ent)) continue;
+        // Only affect active marquees
+        if (get_entvar(ent, var_MarqueeID) == targetId && get_entvar(ent, var_MarqueeWidth) > 0) {
+            set_entvar(ent, var_MarqueeSpeed, speed);
+            found = true;
+        }
+    }
+    if (found) {
+        console_print(id, "Marquee ID %d speed set to %.2f.", targetId, speed);
+    } else {
+        console_print(id, "No active marquee found with ID %d.", targetId);
+    }
+    return PLUGIN_HANDLED;
+}
+
+public Cmd_Marquee_Count_IDs(id, level, cid) {
+    new Trie:uniqueIDs = TrieCreate();
+    if (uniqueIDs == Invalid_Trie) {
+        console_print(id, "Error: Could not create Trie for counting IDs.");
+        return PLUGIN_HANDLED;
+    }
+    new count = 0;
+    new ent = -1;
+
+    while((ent = rg_find_ent_by_class(ent, WORD_CLASSNAME)) > 0) {
+        if(!IsWord(ent)) continue;
+
+        new marqueeId = get_entvar(ent, var_MarqueeID);
+        new marqueeWidth = get_entvar(ent, var_MarqueeWidth);
+
+        // Only count active marquees with a non-zero ID
+        if (marqueeWidth > 0 && marqueeId != 0) {
+            new sMarqueeId[12];
+            num_to_str(marqueeId, sMarqueeId, charsmax(sMarqueeId));
+            if (!TrieKeyExists(uniqueIDs, sMarqueeId)) {
+                TrieSetCell(uniqueIDs, sMarqueeId, 1); // Value doesn't matter, just key presence
+                count++;
+            }
+        }
+    }
+
+    console_print(id, "Active unique marquee IDs: %d", count);
+    TrieDestroy(uniqueIDs);
+    return PLUGIN_HANDLED;
 }
 
 #include "SprLett-Core/Natives"
