@@ -41,7 +41,7 @@ stock trim_string(string[], maxlength) {
     new start = 0;
     while (string[start] == ' ' && start < len) start++;
     if (start > 0) {
-        copys(string, maxlength, string[start]);
+        format(string, maxlength, "%s", string[start]);
     }
 }
 
@@ -93,7 +93,7 @@ public plugin_precache(){
 }
 
 public plugin_init(){
-    set_task(MARQUEE_UPDATE_INTERVAL, "Marquee_Think", _, _, _, TASK_FLAG_REPEAT); // Register marquee think task
+    set_task(MARQUEE_UPDATE_INTERVAL, "Marquee_Think", 0, "", 0, "b"); // Register marquee think task
 
     // Register server commands for marquee control
     register_srvcmd("sl_marquee_text", "Cmd_Marquee_Text", -1, "Sets text for marquees by ID. Usage: sl_marquee_text <id> <text>");
