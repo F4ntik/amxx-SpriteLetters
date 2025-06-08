@@ -41,7 +41,7 @@ stock trim_string(string[], maxlength) {
     new start = 0;
     while (string[start] == ' ' && start < len) start++;
     if (start > 0) {
-        strcopy(string, maxlength, string[start]);
+        copys(string, maxlength, string[start]);
     }
 }
 
@@ -93,7 +93,7 @@ public plugin_precache(){
 }
 
 public plugin_init(){
-    set_task(MARQUEE_UPDATE_INTERVAL, "Marquee_Think", .flags = TASK_REPEAT); // Register marquee think task
+    set_task(MARQUEE_UPDATE_INTERVAL, "Marquee_Think", _, _, _, TASK_FLAG_REPEAT); // Register marquee think task
 
     // Register server commands for marquee control
     register_srvcmd("sl_marquee_text", "Cmd_Marquee_Text", -1, "Sets text for marquees by ID. Usage: sl_marquee_text <id> <text>");
@@ -595,13 +595,13 @@ WordIterNext(&Iterator){
 // Server Command Handlers for Marquee Control
 
 public Cmd_Marquee_Text(id, level, cid) {
-    if (get_argc() < 3) {
+    if (read_argc() < 3) {
         console_print(id, "Usage: sl_marquee_text <id> <text>");
         return PLUGIN_HANDLED;
     }
 
     new targetId_str[32];
-    get_argv(1, targetId_str, charsmax(targetId_str));
+    read_argv(1, targetId_str, charsmax(targetId_str));
     new targetId = str_to_num(targetId_str);
 
     if (targetId == 0) {
@@ -612,10 +612,10 @@ public Cmd_Marquee_Text(id, level, cid) {
     new text[WORD_MAX_LENGTH]; text[0] = EOS;
     new arg[128]; 
 
-    for (new i = 2; i < get_argc(); i++) {
-        get_argv(i, arg, charsmax(arg));
+    for (new i = 2; i < read_argc(); i++) {
+        read_argv(i, arg, charsmax(arg));
         add(text, charsmax(text), arg);
-        if (i < get_argc() - 1) {
+        if (i < read_argc() - 1) {
             add(text, charsmax(text), " ");
         }
     }
@@ -643,17 +643,17 @@ public Cmd_Marquee_Text(id, level, cid) {
 }
 
 public Cmd_Marquee_Width(id, level, cid) {
-    if (get_argc() != 3) {
+    if (read_argc() != 3) {
         console_print(id, "Usage: sl_marquee_width <id> <width>");
         return PLUGIN_HANDLED;
     }
 
     new targetId_str[32];
-    get_argv(1, targetId_str, charsmax(targetId_str));
+    read_argv(1, targetId_str, charsmax(targetId_str));
     new targetId = str_to_num(targetId_str);
     
     new width_str[32];
-    get_argv(2, width_str, charsmax(width_str));
+    read_argv(2, width_str, charsmax(width_str));
     new width = str_to_num(width_str);
 
     if (targetId == 0 && width != 0) { // Allow ID 0 only if disabling all marquees by width
@@ -701,17 +701,17 @@ public Cmd_Marquee_Width(id, level, cid) {
 }
 
 public Cmd_Marquee_Speed(id, level, cid) {
-    if (get_argc() != 3) {
+    if (read_argc() != 3) {
         console_print(id, "Usage: sl_marquee_speed <id> <speed>");
         return PLUGIN_HANDLED;
     }
 
     new targetId_str[32];
-    get_argv(1, targetId_str, charsmax(targetId_str));
+    read_argv(1, targetId_str, charsmax(targetId_str));
     new targetId = str_to_num(targetId_str);
 
     new speed_str[32];
-    get_argv(2, speed_str, charsmax(speed_str));
+    read_argv(2, speed_str, charsmax(speed_str));
     new Float:speed = str_to_float(speed_str);
 
     if (targetId == 0) {
