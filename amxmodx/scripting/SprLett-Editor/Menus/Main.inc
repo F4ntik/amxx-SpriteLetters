@@ -24,6 +24,7 @@ Menu_Main(const UserId){
     menu_additem(MenuId, Lang("MENU_MAIN_DIR"), fmt("#%s", DIRMENU_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_COLOR"), fmt("#%s", COLORMENU_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_RENDER"), fmt("#%s", RENDERMENU_CMD));
+    menu_additem(MenuId, Lang("MENU_MAIN_MARQUEE"), fmt("#%s", MARQUEEMENU_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_OTHER"), fmt("#%s", ATTRSMENU_CMD));
 
     menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_EXIT"));
