@@ -575,6 +575,7 @@ CreateLetter(const Letter[LETTER_SIZE], const Float:Origin[3], const bool:ForWor
  *
  * @noreturn
  */
+
 SetLetterCharset(const LetterEnt, const Charset[SprLett_CharsetData]){
     set_entvar(LetterEnt, var_model, Charset[SL_CD_SpriteFile]);
     set_entvar(LetterEnt, var_modelindex, Charset[SL_CD_SpriteIndex]);
@@ -582,9 +583,20 @@ SetLetterCharset(const LetterEnt, const Charset[SprLett_CharsetData]){
 
     new Letter[LETTER_SIZE];
     get_entvar(LetterEnt, var_LetterText, Letter, charsmax(Letter));
+
+    new Effects = get_entvar(LetterEnt, var_effects);
+    if(equal(Letter, " ")){
+        if(!(Effects & EF_NODRAW))
+            set_entvar(LetterEnt, var_effects, Effects | EF_NODRAW);
+        set_entvar(LetterEnt, var_frame, 0.0);
+        return;
+    }
+
+    if(Effects & EF_NODRAW)
+        set_entvar(LetterEnt, var_effects, Effects & ~EF_NODRAW);
+
     set_entvar(LetterEnt, var_frame, float(GetCharNum(Letter, Charset[SL_CD_Map])));
 }
-
 /**
  * Удаляет все буквы слова
  *
