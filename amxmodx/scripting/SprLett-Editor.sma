@@ -70,6 +70,70 @@ SyncWordDirWithAngles(const WordEnt){
     set_entvar(WordEnt, var_SL_WordDir, DirAngles);
 }
 
+FindWordByAim(const UserId){
+    new Float:Eye[3];
+    get_entvar(UserId, var_origin, Eye);
+    new Float:ViewOfs[3];
+    get_entvar(UserId, var_view_ofs, ViewOfs);
+    for(new i = 0; i < 3; i++)
+        Eye[i] += ViewOfs[i];
+
+    new Float:Angles[3];
+    get_entvar(UserId, var_v_angle, Angles);
+
+    new Float:Forward[3];
+    angle_vector(Angles, ANGLEVECTOR_FORWARD, Forward);
+
+    new WordEnt = nullent;
+    new Float:BestAlong = 0.0;
+    new Float:BestDistSq = 0.0;
+    new bool:HaveCandidate = false;
+
+    new LetterEnt = -1;
+    while((LetterEnt = rg_find_ent_by_class(LetterEnt, "SprLetters_Letter")) > 0){
+        if(!SprLett_Is(LetterEnt, SL_Is_Letter))
+            continue;
+
+        new EntWord = get_entvar(LetterEnt, var_SL_WordEnt);
+        if(!SprLett_Is(EntWord, SL_Is_Word))
+            continue;
+
+        if(get_entvar(LetterEnt, var_effects) & EF_NODRAW)
+            continue;
+
+        new Float:LetterPos[3];
+        get_entvar(LetterEnt, var_origin, LetterPos);
+
+        new Float:Delta[3];
+        for(new i = 0; i < 3; i++)
+            Delta[i] = LetterPos[i] - Eye[i];
+
+        new Float:Along = Delta[0]*Forward[0] + Delta[1]*Forward[1] + Delta[2]*Forward[2];
+        if(Along <= 0.0)
+            continue;
+
+        new Float:Cross[3];
+        Cross[0] = Delta[1]*Forward[2] - Delta[2]*Forward[1];
+        Cross[1] = Delta[2]*Forward[0] - Delta[0]*Forward[2];
+        Cross[2] = Delta[0]*Forward[1] - Delta[1]*Forward[0];
+
+        new Float:DistSq = Cross[0]*Cross[0] + Cross[1]*Cross[1] + Cross[2]*Cross[2];
+
+        new Float:LetterSize = get_entvar(EntWord, var_SL_LetterSize);
+        new Float:MaxRadius = floatmax(LetterSize * 1.25, 4.0);
+        if(DistSq > MaxRadius * MaxRadius)
+            continue;
+
+        if(!HaveCandidate || Along < BestAlong || (Along == BestAlong && DistSq < BestDistSq)){
+            HaveCandidate = true;
+            BestAlong = Along;
+            BestDistSq = DistSq;
+            WordEnt = EntWord;
+        }
+    }
+
+    return HaveCandidate ? WordEnt : nullent;
+}
 
 #include "SprLett-Editor/Utils"
 #include "SprLett-Editor/Menus"
@@ -538,6 +602,10 @@ stock MarqueeEditor_TrimString(string[], maxlength){
     get_user_aiming(UserId, Ent);
     
     if((Ent = SprLett_GetWord(Ent)) == nullent){
+        Ent = FindWordByAim(UserId);
+    }
+
+    if(Ent == nullent){
         client_print(UserId, print_center, Lang("CMD_WORD_NOT_FOUND"));
         gSelWord[UserId] = nullent;
         return;
@@ -550,3 +618,7 @@ stock MarqueeEditor_TrimString(string[], maxlength){
     client_print(UserId, print_center, "%l", "CMD_WORD_SELECTED", Word);
     return;
 }
+
+
+
+
