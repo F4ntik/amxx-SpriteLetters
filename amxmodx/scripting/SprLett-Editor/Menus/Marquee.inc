@@ -29,7 +29,6 @@ Menu_Marquee(const UserId){
     copy(status, charsmax(status), width > 0 ? Lang("MENUS_ENABLED") : Lang("MENUS_DISABLED"));
 
     menu_additem(MenuId, fmt("%l", "MENU_MARQUEE_TOGGLE", status), fmt("$%s", MARQUEE_TOGGLE_CMD));
-
     menu_addtext(MenuId, fmt("%l", "MENU_MARQUEE_INFO", marqueeId, width, speed), 0);
 
     new FullText[WORD_MAX_LENGTH];
@@ -46,7 +45,6 @@ Menu_Marquee(const UserId){
     menu_addtext(MenuId, fmt("%l", "MENU_MARQUEE_TEXT", DisplayText[0] ? DisplayText : Lang("MENU_MARQUEE_TEXT_EMPTY")), 0);
 
     menu_addblank2(MenuId);
-
     menu_additem(MenuId, fmt("%l", "MENU_MARQUEE_SET_ID", marqueeId), fmt("#messagemode %s", MARQUEE_SETID_CMD));
     menu_additem(MenuId, fmt("%l", "MENU_MARQUEE_SET_WIDTH", width), fmt("#messagemode %s", MARQUEE_SETWIDTH_CMD));
     menu_additem(MenuId, fmt("%l", "MENU_MARQUEE_SET_SPEED", speed), fmt("#messagemode %s", MARQUEE_SETSPEED_CMD));
@@ -54,8 +52,11 @@ Menu_Marquee(const UserId){
     if(width > 0)
         menu_additem(MenuId, Lang("MENU_MARQUEE_RESET_OFFSET"), fmt("$%s", MARQUEE_RESET_OFFSET_CMD));
 
-    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_BACK"));
-    menu_setprop(MenuId, MPROP_EXIT, MEXIT_FORCE);
+    menu_addblank2(MenuId);
+    menu_additem(MenuId, Lang("MENUS_BACK"), fmt("#%s", MAINMENU_CMD));
+
+    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_EXIT"));
+    menu_setprop(MenuId, MPROP_EXIT, MEXIT_ALL);
     menu_setprop(MenuId, MPROP_PERPAGE, 0);
 
     menu_display(UserId, MenuId);

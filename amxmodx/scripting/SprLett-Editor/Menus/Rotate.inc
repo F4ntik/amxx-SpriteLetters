@@ -15,24 +15,20 @@ Menu_Rotate(const UserId){
     get_entvar(gSelWord[UserId], var_angles, Angles);
 
     menu_additem(MenuId, fmt("%l", "MENUS_ACTION", Lang("MENU_ROT_ACTION")), fmt("#%s", DIRMENU_CMD));
-
     menu_additem(MenuId, fmt("%l", "MENUS_STEP", gMoveStep[UserId]), fmt("$%s", STEPEX_CMD));
-
     menu_additem(MenuId, Lang("MENU_ROT_XPP"), fmt("$%s %.1f 0.0 0.0", ROTATE_CMD, gMoveStep[UserId]));
     menu_additem(MenuId, Lang("MENU_ROT_XMM"), fmt("$%s %.1f 0.0 0.0", ROTATE_CMD, -gMoveStep[UserId]));
-
     menu_additem(MenuId, Lang("MENU_ROT_YPP"), fmt("$%s 0.0 %.1f 0.0", ROTATE_CMD, gMoveStep[UserId]));
     menu_additem(MenuId, Lang("MENU_ROT_YMM"), fmt("$%s 0.0 %.1f 0.0", ROTATE_CMD, -gMoveStep[UserId]));
-
     menu_additem(MenuId, Lang("MENU_ROT_ZPP"), fmt("$%s 0.0 0.0 %.1f", ROTATE_CMD, gMoveStep[UserId]));
     menu_additem(MenuId, Lang("MENU_ROT_ZMM"), fmt("$%s 0.0 0.0 %.1f", ROTATE_CMD, -gMoveStep[UserId]));
-    
     menu_addtext(MenuId, fmt("%l", "MENU_ROT_CURRENT_VALUE", Angles[0], Angles[1], Angles[2]), 0);
-    
-    menu_addblank2(MenuId);
 
-    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_BACK"));
-    menu_setprop(MenuId, MPROP_EXIT, MEXIT_FORCE);
+    menu_addblank2(MenuId);
+    menu_additem(MenuId, Lang("MENUS_BACK"), fmt("#%s", MAINMENU_CMD));
+
+    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_EXIT"));
+    menu_setprop(MenuId, MPROP_EXIT, MEXIT_ALL);
     menu_setprop(MenuId, MPROP_PERPAGE, 0);
 
     menu_display(UserId, MenuId);
