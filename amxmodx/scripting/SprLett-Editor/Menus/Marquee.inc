@@ -22,6 +22,8 @@ Menu_Marquee(const UserId){
 
     new MenuId = menu_create(fmt("%l", "MENUS_TITLE", Title), "@MenuH_Marquee");
 
+    menu_additem(MenuId, fmt("%l", "MENUS_ACTION", Lang("MENU_MARQUEE_ACTION")), fmt("#%s", ATTRSMENU_CMD));
+
     new marqueeId = get_entvar(WordEnt, var_SL_MarqueeID);
     new width = get_entvar(WordEnt, var_SL_MarqueeWidth);
     new Float:speed = get_entvar(WordEnt, var_SL_MarqueeSpeed);
@@ -52,11 +54,8 @@ Menu_Marquee(const UserId){
     if(width > 0)
         menu_additem(MenuId, Lang("MENU_MARQUEE_RESET_OFFSET"), fmt("$%s", MARQUEE_RESET_OFFSET_CMD));
 
-    menu_addblank2(MenuId);
-    menu_additem(MenuId, Lang("MENUS_BACK"), fmt("#%s", MAINMENU_CMD));
-
-    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_EXIT"));
-    menu_setprop(MenuId, MPROP_EXIT, MEXIT_ALL);
+    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_BACK"));
+    menu_setprop(MenuId, MPROP_EXIT, MEXIT_FORCE);
     menu_setprop(MenuId, MPROP_PERPAGE, 0);
 
     menu_display(UserId, MenuId);
@@ -66,3 +65,4 @@ Menu_Marquee(const UserId){
     if(_CmdMenuHandle(UserId, MenuId, ItemId))
         client_cmd(UserId, MARQUEEMENU_CMD);
 }
+

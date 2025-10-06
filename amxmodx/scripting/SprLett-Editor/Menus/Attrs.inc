@@ -25,11 +25,8 @@ Menu_Attrs(const UserId){
     menu_additem(MenuId, Lang("MENU_OTHER_SAVE_WORD"), fmt("$%s", SAVE_CMD));
     menu_additem(MenuId, Lang("MENU_OTHER_REMOVE_WORD"), fmt("#%s", REMOVE_CMD));
     
-    menu_addblank2(MenuId);
-    menu_additem(MenuId, Lang("MENUS_BACK"), fmt("#%s", MAINMENU_CMD));
-
-    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_EXIT"));
-    menu_setprop(MenuId, MPROP_EXIT, MEXIT_ALL);
+    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_BACK"));
+    menu_setprop(MenuId, MPROP_EXIT, MEXIT_FORCE);
     menu_setprop(MenuId, MPROP_PERPAGE, 0);
 
     menu_display(UserId, MenuId);
@@ -39,3 +36,4 @@ Menu_Attrs(const UserId){
     if(_CmdMenuHandle(UserId, MenuId, ItemId))
         client_cmd(UserId, ATTRSMENU_CMD);
 }
+

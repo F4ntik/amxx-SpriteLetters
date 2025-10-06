@@ -22,9 +22,16 @@ stock const SL_LIB_NAME[] = "SpriteLetters";
 #define var_SL_MarqueeText var_netname
 #define var_SL_MarqueeOffset var_fuser4
 
+#define var_SL_RotateMode var_iuser3
+
 #define var_SL_WordSaveId var_iuser1
 
 #define SprLett_CreateWord(%1) SprLett_BuildWord(SprLett_InitWord(%1))
+enum SprLett_RotateMode {
+    SL_ROTATE_LETTERS = 0,
+    SL_ROTATE_WORD
+};
+
 #define SprLett_RebuildWord(%1) SprLett_DestroyWord(%1);SprLett_BuildWord(%1)
 
 enum _:SprLett_CharsetData {

@@ -17,10 +17,10 @@ set PACKAGE_PLUINGS_LIST_POSTFIX=unnamed
 set PACKAGE_PLUINGS_LIST_SAVE=0
 
 if not defined AMXX_COMPILER_DIR (
-    set AMXX_COMPILER_DIR=C:\AmxModX\1.9.0
+    set AMXX_COMPILER_DIR=D:\PyProjects\amxx-SpriteLetters\compilator_1_9_0
 )
 if not defined AMXX_COMPILER_EXECUTABLE (
-    set AMXX_COMPILER_EXECUTABLE=amxx190
+    set AMXX_COMPILER_EXECUTABLE=compile.exe
 )
 if not defined PACKAGE_DEBUG (
     set PACKAGE_DEBUG=0
