@@ -66,9 +66,11 @@ MenuCmds_Init(){
     Menu_Marquee(UserId);
 }
 
-bool:_CmdMenuHandle(const UserId, const MenuId, const ItemId){
+bool:_CmdMenuHandle(const UserId, const MenuId, const ItemId, const bool:BackToMain = true){
     if(ItemId == MENU_EXIT){
         menu_destroy(MenuId);
+        if(BackToMain)
+            Menu_Main(UserId);
         return false;
     }
 

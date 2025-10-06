@@ -17,7 +17,6 @@ Menu_Main(const UserId){
 
     menu_additem(MenuId, Lang("MENU_MAIN_SELECT_WORD"), fmt("$%s", SELECT_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_CREATE_WORD"), fmt("#messagemode %s", CREATE_CMD));
-    menu_additem(MenuId, fmt("%l", "MENU_MAIN_EDIT_MODE", SprLett_GetEditMode() ? Lang("MENUS_ENABLED") : Lang("MENUS_DISABLED")), fmt("$%s", EDITMODE_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_MOVE"), fmt("#%s", MOVEMENU_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_ROT"), fmt("#%s", ROTATEMENU_CMD));
     menu_additem(MenuId, Lang("MENU_MAIN_DIR"), fmt("#%s", DIRMENU_CMD));
@@ -34,6 +33,6 @@ Menu_Main(const UserId){
 }
 
 @MenuH_Main(const UserId, const MenuId, const ItemId){
-    if(_CmdMenuHandle(UserId, MenuId, ItemId))
+    if(_CmdMenuHandle(UserId, MenuId, ItemId, false))
         client_cmd(UserId, MAINMENU_CMD);
 }

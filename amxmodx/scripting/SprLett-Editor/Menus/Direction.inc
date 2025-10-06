@@ -22,11 +22,8 @@ Menu_Direction(const UserId){
     menu_additem(MenuId, Lang("MENU_DIR_YMM"), fmt("$%s 0.0 %.1f", DIR_CMD, -gMoveStep[UserId]));
     menu_addtext(MenuId, fmt("%l", "MENU_DIR_CURRENT_VALUE", Dir[0], Dir[1]), 0);
 
-    menu_addblank2(MenuId);
-    menu_additem(MenuId, Lang("MENUS_BACK"), fmt("#%s", MAINMENU_CMD));
-
-    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_EXIT"));
-    menu_setprop(MenuId, MPROP_EXIT, MEXIT_ALL);
+    menu_setprop(MenuId, MPROP_EXITNAME, Lang("MENUS_BACK"));
+    menu_setprop(MenuId, MPROP_EXIT, MEXIT_FORCE);
     menu_setprop(MenuId, MPROP_PERPAGE, 0);
 
     menu_display(UserId, MenuId);
@@ -36,3 +33,4 @@ Menu_Direction(const UserId){
     if(_CmdMenuHandle(UserId, MenuId, ItemId))
         client_cmd(UserId, DIRMENU_CMD);
 }
+
