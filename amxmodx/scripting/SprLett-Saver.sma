@@ -4,6 +4,7 @@
 
 #include <amxmodx>
 #include <reapi>
+#include <vector>
 #include <json>
 #include <SprLetters>
 #include "SprLett-Core/Ver"
@@ -22,6 +23,21 @@ new const PLUG_NAME[] = "[SprLett] Saver";
 new JSON:gSaves;
 new gSavesFile[PLATFORM_MAX_PATH];
 new gLastSaveId = 0;
+
+SyncWordDirWithAngles(const WordEnt){
+    if(!SprLett_Is(WordEnt, SL_Is_Word))
+        return;
+
+    new Float:Angles[3];
+    get_entvar(WordEnt, var_angles, Angles);
+
+    new Float:Right[3];
+    angle_vector(Angles, ANGLEVECTOR_RIGHT, Right);
+
+    new Float:DirAngles[3];
+    vector_to_angle(Right, DirAngles);
+    set_entvar(WordEnt, var_SL_WordDir, DirAngles);
+}
 
 public plugin_init(){
     register_plugin(PLUG_NAME, PLUG_VER, "ArKaNeMaN");
@@ -181,6 +197,9 @@ JSON:WordToJson(const WordEnt){
     i = get_entvar(WordEnt, var_rendermode);
     json_object_set_number(WordObj, "RenderMode", i);
 
+    i = get_entvar(WordEnt, var_SL_RotateMode);
+    json_object_set_number(WordObj, "RotateMode", i);
+
     return WordObj;
 }
 
@@ -195,6 +214,10 @@ JsonToWord(const JSON:WordObj, const WordEnt){
 
     json_object_get_vector(WordObj, "Dir", Vec);
     set_entvar(WordEnt, var_SL_WordDir, Vec);
+
+    set_entvar(WordEnt, var_SL_RotateMode, json_object_get_number(WordObj, "RotateMode"));
+    if(SprLett_RotateMode:get_entvar(WordEnt, var_SL_RotateMode) == SL_ROTATE_WORD)
+        SyncWordDirWithAngles(WordEnt);
 
     json_object_get_vector(WordObj, "Color", Vec);
     set_entvar(WordEnt, var_rendercolor, Vec);
