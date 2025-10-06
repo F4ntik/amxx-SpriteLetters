@@ -16,6 +16,11 @@ stock const SL_LIB_NAME[] = "SpriteLetters";
 #define var_SL_LetterSize var_fuser1
 #define var_SL_LetterText var_message
 #define var_SL_LetterCharset var_noise
+#define var_SL_MarqueeID var_iuser1
+#define var_SL_MarqueeWidth var_iuser2
+#define var_SL_MarqueeSpeed var_fuser3
+#define var_SL_MarqueeText var_netname
+#define var_SL_MarqueeOffset var_fuser4
 
 #define var_SL_WordSaveId var_iuser1
 
