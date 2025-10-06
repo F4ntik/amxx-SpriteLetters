@@ -4,6 +4,7 @@
 
 #include <amxmodx>
 #include <reapi>
+#include <vector>
 #include <SprLetters>
 #include "SprLett-Core/Ver"
 
@@ -23,6 +24,7 @@ new const STEPEX_CMD[] = "slsetstepex";
 
 new const MOVE_CMD[] = "slmove";
 new const ROTATE_CMD[] = "slrotate";
+new const ROTATE_MODE_CMD[] = "slrotatemode";
 new const DIR_CMD[] = "sldir";
 
 new const CHARSET_CMD[] = "slcharset";
@@ -53,6 +55,22 @@ new const PLUG_NAME[] = "[SprLett] Editor";
 new gSelWord[MAX_PLAYERS + 1] = {nullent, ...};
 new Float:gMoveStep[MAX_PLAYERS + 1] = {1.0, ...};
 
+SyncWordDirWithAngles(const WordEnt){
+    if(!SprLett_Is(WordEnt, SL_Is_Word))
+        return;
+
+    new Float:Angles[3];
+    get_entvar(WordEnt, var_angles, Angles);
+
+    new Float:Right[3];
+    angle_vector(Angles, ANGLEVECTOR_RIGHT, Right);
+
+    new Float:DirAngles[3];
+    vector_to_angle(Right, DirAngles);
+    set_entvar(WordEnt, var_SL_WordDir, DirAngles);
+}
+
+
 #include "SprLett-Editor/Utils"
 #include "SprLett-Editor/Menus"
 
@@ -69,6 +87,7 @@ public plugin_init(){
 
     RegisterClCmds(MOVE_CMD, "@Cmd_Move");
     RegisterClCmds(ROTATE_CMD, "@Cmd_Rotate");
+    RegisterClCmds(ROTATE_MODE_CMD, "@Cmd_RotateMode");
     RegisterClCmds(DIR_CMD, "@Cmd_Dir");
 
     RegisterClCmds(CHARSET_CMD, "@Cmd_Charset");
@@ -457,13 +476,47 @@ stock MarqueeEditor_TrimString(string[], maxlength){
     CMD_CHECK_ARGC(UserId, 3)
     CHECK_WORD(UserId)
 
+    new Float:Delta[3];
+    Delta[0] = read_argv_float(NULL_ARG+1);
+    Delta[1] = read_argv_float(NULL_ARG+2);
+    Delta[2] = read_argv_float(NULL_ARG+3);
+
     new Float:Angles[3];
     get_entvar(gSelWord[UserId], var_angles, Angles);
-    Angles[0] += read_argv_float(NULL_ARG+1);
-    Angles[1] += read_argv_float(NULL_ARG+2);
-    Angles[2] += read_argv_float(NULL_ARG+3);
+    Angles[0] += Delta[0];
+    Angles[1] += Delta[1];
+    Angles[2] += Delta[2];
     set_entvar(gSelWord[UserId], var_angles, Angles);
+
+    if(SprLett_RotateMode:get_entvar(gSelWord[UserId], var_SL_RotateMode) == SL_ROTATE_WORD)
+        SyncWordDirWithAngles(gSelWord[UserId]);
+
     SprLett_RebuildWord(gSelWord[UserId]);
+}
+
+@Cmd_RotateMode(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CMD_CHECK_ARGC(UserId, 0)
+    CHECK_WORD(UserId)
+
+    new WordEnt = gSelWord[UserId];
+    new SprLett_RotateMode:PrevMode = SprLett_RotateMode:get_entvar(WordEnt, var_SL_RotateMode);
+    new SprLett_RotateMode:Mode = (PrevMode == SL_ROTATE_WORD) ? SL_ROTATE_LETTERS : SL_ROTATE_WORD;
+    set_entvar(WordEnt, var_SL_RotateMode, _:Mode);
+
+    if(PrevMode == SL_ROTATE_WORD)
+        SyncWordDirWithAngles(WordEnt);
+    if(Mode == SL_ROTATE_WORD)
+        SyncWordDirWithAngles(WordEnt);
+
+    SprLett_RebuildWord(WordEnt);
+
+    new ModeMessageKey[32];
+    if(Mode == SL_ROTATE_WORD)
+        copy(ModeMessageKey, charsmax(ModeMessageKey), "CMD_ROTATE_MODE_WORD");
+    else
+        copy(ModeMessageKey, charsmax(ModeMessageKey), "CMD_ROTATE_MODE_LETTERS");
+    client_print(UserId, print_center, "%l", ModeMessageKey);
 }
 
 @Cmd_Dir(const UserId){
@@ -497,4 +550,3 @@ stock MarqueeEditor_TrimString(string[], maxlength){
     client_print(UserId, print_center, "%l", "CMD_WORD_SELECTED", Word);
     return;
 }
-

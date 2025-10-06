@@ -218,6 +218,7 @@ InitWord(const Word[], const Float:Origin[3], MarqueeID = 0, MarqueeWidth = 0, F
     set_entvar(WordEnt, var_LetterSize, SprParams[SL_P_Size]);
     set_entvar(WordEnt, var_WordOffset, SprParams[SL_P_Offset]); // This is inter-letter spacing
     set_entvar(WordEnt, var_WordDir, SprWordDir);
+    set_entvar(WordEnt, var_SL_RotateMode, SL_ROTATE_WORD);
 
     // Set original text to var_WordText (for display) and var_MarqueeText (for full source)
     if (MarqueeWidth > 0) {
@@ -443,12 +444,23 @@ BuildWord(const WordEnt){
     set_entvar(WordEnt, var_flags, FL_DORMANT);
     set_entvar(WordEnt, var_WordEnt, WordEnt);
 
-    new Float:Dir[3];
-    get_entvar(WordEnt, var_WordDir, Dir);
-    angle_vector(Dir, ANGLEVECTOR_FORWARD, Dir);
+    new Float:DirAngles[3];
+    get_entvar(WordEnt, var_WordDir, DirAngles);
 
+    new SprLett_RotateMode:RotateMode = SprLett_RotateMode:get_entvar(WordEnt, var_SL_RotateMode);
+
+    new Float:Angles[3];
+    new Float:StepVec[3];
+    if(RotateMode == SL_ROTATE_WORD){
+        get_entvar(WordEnt, var_angles, Angles);
+        angle_vector(Angles, ANGLEVECTOR_RIGHT, StepVec);
+    } else {
+        angle_vector(DirAngles, ANGLEVECTOR_FORWARD, StepVec);
+    }
+
+    new Float:WordOffset = Float:get_entvar(WordEnt, var_WordOffset);
     new Float:OffsetVec[3];
-    VecMult(Dir, Float:get_entvar(WordEnt, var_WordOffset), OffsetVec);
+    VecMult(StepVec, WordOffset, OffsetVec);
 
     new Word[WORD_MAX_LENGTH];
     get_entvar(WordEnt, var_WordText, Word, charsmax(Word));
