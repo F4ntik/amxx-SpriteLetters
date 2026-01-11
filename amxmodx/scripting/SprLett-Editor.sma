@@ -175,6 +175,53 @@ public plugin_init(){
     MenuCmds_Init();
 }
 
+stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:TrimSpaces = false){
+    buffer[0] = EOS;
+
+    new args[WORD_MAX_LENGTH];
+    read_args(args, charsmax(args));
+    remove_quotes(args);
+
+    if(args[0]){
+        new cmdToken[64];
+        formatex(cmdToken, charsmax(cmdToken), "/%s", CmdName);
+        new tokenLen = strlen(cmdToken);
+        if(strlen(args) >= tokenLen && equali(args, cmdToken, tokenLen)){
+            new start = tokenLen;
+            if(args[start] == ' ')
+                start++;
+            formatex(buffer, maxLen, "%s", args[start]);
+        } else {
+            copy(buffer, maxLen, args);
+        }
+
+        if(TrimSpaces)
+            MarqueeEditor_TrimString(buffer, maxLen);
+        return buffer[0] != EOS;
+    }
+
+    new nullArg = GetNullArg();
+    new argc = read_argc();
+    new arg[128];
+    new bool:started = false;
+
+    for(new i = nullArg + 1; i < argc; i++){
+        read_argv(i, arg, charsmax(arg));
+        if(i == nullArg + 1){
+            if(equali(arg, CmdName) || equali(arg, fmt("/%s", CmdName)))
+                continue;
+        }
+        if(started)
+            add(buffer, maxLen, " ");
+        add(buffer, maxLen, arg);
+        started = true;
+    }
+
+    if(TrimSpaces)
+        MarqueeEditor_TrimString(buffer, maxLen);
+    return buffer[0] != EOS;
+}
+
 @Cmd_Color(const UserId){
     CMD_CHECK_ACCESS(UserId)
     CMD_CHECK_ARGC(UserId, 3)
@@ -281,7 +328,7 @@ public plugin_init(){
     CHECK_WORD(UserId)
 
     new NewWord[WORD_MAX_LENGTH];
-    read_argv(NULL_ARG+1, NewWord, charsmax(NewWord));
+    ReadCommandText(WRITE_CMD, NewWord, charsmax(NewWord));
 
     set_entvar(gSelWord[UserId], var_SL_WordText, NewWord);
     SprLett_RebuildWord(gSelWord[UserId]);
@@ -374,8 +421,7 @@ public plugin_init(){
     new WordEnt = gSelWord[UserId];
 
     new Text[WORD_MAX_LENGTH];
-    read_argv(NULL_ARG+1, Text, charsmax(Text));
-    MarqueeEditor_TrimString(Text, charsmax(Text));
+    ReadCommandText(MARQUEE_SETTEXT_CMD, Text, charsmax(Text), true);
     set_entvar(WordEnt, var_SL_MarqueeText, Text);
 
     new width = get_entvar(WordEnt, var_SL_MarqueeWidth);
@@ -491,16 +537,17 @@ stock MarqueeEditor_TrimString(string[], maxlength){
 @Cmd_SetStepEx(const UserId){
     CMD_CHECK_ACCESS(UserId)
 
-    new CurValId;
-    for(CurValId = sizeof MOVESTEP_VALUES-1; CurValId >= 0; CurValId--){
-        if(floatround(gMoveStep[UserId]) >= MOVESTEP_VALUES[CurValId]){
-            CurValId++;
+    new CurValId = 0;
+    new Float:CurStep = gMoveStep[UserId];
+    for(new i = 0; i < sizeof MOVESTEP_VALUES; i++){
+        if(CurStep < float(MOVESTEP_VALUES[i])){
+            CurValId = i;
             break;
         }
+        if(i == sizeof MOVESTEP_VALUES - 1){
+            CurValId = 0;
+        }
     }
-
-    if(CurValId >= sizeof MOVESTEP_VALUES)
-        CurValId = 0;
 
     gMoveStep[UserId] = float(MOVESTEP_VALUES[CurValId]);
 }

@@ -12,7 +12,7 @@
 #define IntToStr(%1) fmt("%d",%1)
 #define CreateFile(%1) fclose(fopen(%1,"w"))
 
-#define var_WordSaveId var_iuser1
+#define var_WordSaveId var_iuser4
 #define offset__var_WordSaveId 10
 
 new const CFGS_DIR[] = "/plugins/SpriteLetters/Saves/";
@@ -123,13 +123,16 @@ public plugin_cfg(){
             gLastSaveId = iId;
 
         new JSON:WordObj = json_object_get_value_at(gSaves, i);
-        if(!json_is_object(WordObj))
+        if(!json_is_object(WordObj)){
+            json_free(WordObj);
             continue;
+        }
 
         new WordEnt = SprLett_InitWord();
         JsonToWord(WordObj, WordEnt);
         set_entvar(WordEnt, var_WordSaveId, iId+offset__var_WordSaveId);
         SprLett_BuildWord(WordEnt);
+        json_free(WordObj);
     }
 }
 

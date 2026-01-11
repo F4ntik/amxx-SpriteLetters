@@ -21,6 +21,14 @@ public plugin_init(){
     }
     
     new Len = GetWordLen(Ent);
+    if(Len <= 1){
+        if(Len == 1){
+            new It = Ent;
+            if(SprLett_WordIterNext(It))
+                set_entvar(It, var_rendercolor, RGBFrom);
+        }
+        return;
+    }
     new Float:RGBDelta[3], Float:RGBCurrent[3];
     for(new i = 0; i < 3; i++)
         RGBDelta[i] = (RGBTo[i] - RGBFrom[i]) / (Len - 1);

@@ -24,7 +24,7 @@ stock const SL_LIB_NAME[] = "SpriteLetters";
 
 #define var_SL_RotateMode var_iuser3
 
-#define var_SL_WordSaveId var_iuser1
+#define var_SL_WordSaveId var_iuser4
 
 #define SprLett_CreateWord(%1) SprLett_BuildWord(SprLett_InitWord(%1))
 enum SprLett_RotateMode {

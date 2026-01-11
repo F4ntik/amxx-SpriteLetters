@@ -27,6 +27,14 @@ bool:GetLetterFromStr(const Str[], Letter[LETTER_SIZE], &Next = 0){
     if(!Str[Next])
         return false;
     new bytes = get_char_bytes(Str[Next]);
+    if(bytes <= 0){
+        Letter[0] = ' ';
+        Letter[1] = EOS;
+        Next += 1;
+        return true;
+    }
+    if(bytes >= LETTER_SIZE)
+        bytes = LETTER_SIZE - 1;
     copy(Letter, bytes, Str[Next]);
     Next += bytes;
     return true;
