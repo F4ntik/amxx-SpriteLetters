@@ -25,6 +25,9 @@ public plugin_natives(){
     register_native("SprLett_GetWord", "@_GetWord");
     register_native("SprLett_InitWord", "@_InitWord");
     register_native("SprLett_BuildWord", "@_BuildWord");
+    register_native("SprLett_SetWordText", "@_SetWordText");
+    register_native("SprLett_SetMarqueeWidth", "@_SetMarqueeWidth");
+    register_native("SprLett_RefreshMarquee", "@_RefreshMarquee");
     register_native("SprLett_RemoveWord", "@_RemoveWord");
     register_native("SprLett_DestroyWord", "@_DestroyWord");
     register_native("SprLett_WordIterNext", "@_WordIterNext");
@@ -114,6 +117,20 @@ bool:@_GetEditMode(){
     enum {Arg_WordEnt = 1}
 
     BuildWord(get_param(Arg_WordEnt));
+}
+
+bool:@_SetWordText(){
+    new Text[WORD_MAX_LENGTH];
+    get_string(2, Text, charsmax(Text));
+    return SetWordText(get_param(1), Text);
+}
+
+bool:@_SetMarqueeWidth(){
+    return SetMarqueeWidth(get_param(1), get_param(2));
+}
+
+@_RefreshMarquee(){
+    UpdateMarquee(get_param(1));
 }
 
 bool:@_SetParams(PlugId, pCnt){

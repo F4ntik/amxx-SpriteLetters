@@ -207,6 +207,15 @@ native SprLett_InitWord(const Word[WORD_MAX_LENGTH] = "", const Float:Origin[3] 
  */
 native SprLett_BuildWord(const WordEnt);
 
+/** Updates the full source text and immediately rebuilds its visible window. */
+native bool:SprLett_SetWordText(const WordEnt, const Text[]);
+
+/** Zero restores the complete static text; positive widths enable scrolling. */
+native bool:SprLett_SetMarqueeWidth(const WordEnt, const Width);
+
+/** Redraws a marquee at its current offset, including when speed is zero. */
+native SprLett_RefreshMarquee(const WordEnt);
+
 /**
  * Удаляет все буквы слова
  *
@@ -244,15 +253,18 @@ native any:SprLett_GetParam(const {SprLett_Params, SprLett_ParamsVec, SprLett_Pa
  *
  * @param WordEnt Индекс ентити слова
  *
- * @noreturn
+ * @return true only after the updated save has been written successfully.
  */
-native SprLett_SaveWord(const WordEnt);
+native bool:SprLett_SaveWord(const WordEnt);
 
 /**
  * Удаление сохранения слова.
  *
  * @param WordEnt Индекс ентити слова
  *
- * @noreturn
+ * @return true if the saved word was removed, or the word was not saved.
  */
-native SprLett_UnSaveWord(const WordEnt);
+native bool:SprLett_UnSaveWord(const WordEnt);
+
+/** Gets the path used by Saver for an actionable write-error message. */
+native SprLett_GetSavesFile(Buffer[], const MaxLen);

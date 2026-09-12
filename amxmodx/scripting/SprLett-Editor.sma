@@ -330,15 +330,17 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     new NewWord[WORD_MAX_LENGTH];
     ReadCommandText(WRITE_CMD, NewWord, charsmax(NewWord));
 
-    set_entvar(gSelWord[UserId], var_SL_WordText, NewWord);
-    SprLett_RebuildWord(gSelWord[UserId]);
+    SprLett_SetWordText(gSelWord[UserId], NewWord);
 }
 
 @Cmd_Save(const UserId){
     CMD_CHECK_ACCESS(UserId)
     CHECK_WORD(UserId)
 
-    SprLett_SaveWord(gSelWord[UserId]);
+    if (!SprLett_SaveWord(gSelWord[UserId])) {
+        ReportSaveError(UserId);
+        return;
+    }
 
     client_print(UserId, print_center, Lang("CMD_WORD_SAVED"));
 }
@@ -347,7 +349,10 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     CMD_CHECK_ACCESS(UserId)
     CHECK_WORD(UserId)
 
-    SprLett_UnSaveWord(gSelWord[UserId]);
+    if (!SprLett_UnSaveWord(gSelWord[UserId])) {
+        ReportSaveError(UserId);
+        return;
+    }
     SprLett_RemoveWord(gSelWord[UserId]);
     gSelWord[UserId] = nullent;
 
@@ -363,8 +368,7 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     if (get_entvar(WordEnt, var_SL_MarqueeWidth) > 0) {
         MarqueeEditor_Disable(WordEnt);
     } else {
-        new Float:speed = get_entvar(WordEnt, var_SL_MarqueeSpeed);
-        MarqueeEditor_Enable(WordEnt, DEFAULT_MARQUEE_WIDTH, speed);
+        SprLett_SetMarqueeWidth(WordEnt, DEFAULT_MARQUEE_WIDTH);
     }
 
     Menu_Marquee(UserId);
@@ -390,12 +394,7 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     new width = read_argv_int(NULL_ARG+1);
     new WordEnt = gSelWord[UserId];
 
-    if (width <= 0) {
-        MarqueeEditor_Disable(WordEnt);
-    } else {
-        new Float:speed = get_entvar(WordEnt, var_SL_MarqueeSpeed);
-        MarqueeEditor_Enable(WordEnt, width, speed);
-    }
+    SprLett_SetMarqueeWidth(WordEnt, width);
 
     Menu_Marquee(UserId);
 }
@@ -422,15 +421,7 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
 
     new Text[WORD_MAX_LENGTH];
     ReadCommandText(MARQUEE_SETTEXT_CMD, Text, charsmax(Text), true);
-    set_entvar(WordEnt, var_SL_MarqueeText, Text);
-
-    new width = get_entvar(WordEnt, var_SL_MarqueeWidth);
-    if (width <= 0) {
-        set_entvar(WordEnt, var_SL_WordText, Text);
-        SprLett_RebuildWord(WordEnt);
-    } else {
-        set_entvar(WordEnt, var_SL_MarqueeOffset, float(width));
-    }
+    SprLett_SetWordText(WordEnt, Text);
 
     Menu_Marquee(UserId);
 }
@@ -442,78 +433,23 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     new WordEnt = gSelWord[UserId];
     new width = get_entvar(WordEnt, var_SL_MarqueeWidth);
     if (width > 0) {
-        set_entvar(WordEnt, var_SL_MarqueeOffset, float(width));
+        new Float:StartOffset = Float:get_entvar(WordEnt, var_SL_MarqueeSpeed) > 0.0 ? float(width) : 0.0;
+        set_entvar(WordEnt, var_SL_MarqueeOffset, StartOffset);
+        SprLett_RefreshMarquee(WordEnt);
     }
 
     Menu_Marquee(UserId);
 }
 
-stock bool:MarqueeEditor_Enable(const WordEnt, marqueeWidth, Float:speed){
-    if (!SprLett_Is(WordEnt, SL_Is_Word))
-        return false;
-
-    marqueeWidth = clamp(marqueeWidth, 1, WORD_MAX_LENGTH - 1);
-    if (marqueeWidth <= 0)
-        return false;
-
-    if (speed <= 0.0)
-        speed = DEFAULT_MARQUEE_SPEED;
-
-    if (get_entvar(WordEnt, var_SL_MarqueeID) == 0)
-        set_entvar(WordEnt, var_SL_MarqueeID, WordEnt);
-
-    new StoredText[WORD_MAX_LENGTH];
-    MarqueeEditor_GetStoredText(WordEnt, StoredText, charsmax(StoredText));
-    if (!StoredText[0])
-        copy(StoredText, charsmax(StoredText), " ");
-
-    set_entvar(WordEnt, var_SL_MarqueeText, StoredText);
-    set_entvar(WordEnt, var_SL_MarqueeWidth, marqueeWidth);
-    set_entvar(WordEnt, var_SL_MarqueeSpeed, speed);
-    set_entvar(WordEnt, var_SL_MarqueeOffset, float(marqueeWidth));
-
-    new Placeholder[WORD_MAX_LENGTH];
-    MarqueeEditor_FillWindowString(Placeholder, charsmax(Placeholder), marqueeWidth);
-    set_entvar(WordEnt, var_SL_WordText, Placeholder);
-
-    SprLett_RebuildWord(WordEnt);
-    return true;
-}
-
 stock MarqueeEditor_Disable(const WordEnt){
-    if (!SprLett_Is(WordEnt, SL_Is_Word))
-        return;
-
-    new StoredText[WORD_MAX_LENGTH];
-    MarqueeEditor_GetStoredText(WordEnt, StoredText, charsmax(StoredText));
-
-    set_entvar(WordEnt, var_SL_MarqueeWidth, 0);
-    set_entvar(WordEnt, var_SL_MarqueeSpeed, 0.0);
-    set_entvar(WordEnt, var_SL_MarqueeOffset, 0.0);
-    set_entvar(WordEnt, var_SL_MarqueeText, StoredText);
-    set_entvar(WordEnt, var_SL_WordText, StoredText);
-
-    SprLett_RebuildWord(WordEnt);
+    SprLett_SetMarqueeWidth(WordEnt, 0);
 }
 
-stock MarqueeEditor_GetStoredText(const WordEnt, buffer[], const maxLen){
-    get_entvar(WordEnt, var_SL_MarqueeText, buffer, maxLen);
-    if (!buffer[0])
-        get_entvar(WordEnt, var_SL_WordText, buffer, maxLen);
-    MarqueeEditor_TrimString(buffer, maxLen);
-}
-
-stock MarqueeEditor_FillWindowString(dest[], const maxLen, marqueeWidth){
-    new limit = marqueeWidth;
-    if (limit < 0)
-        limit = 0;
-    else if (limit > maxLen)
-        limit = maxLen;
-
-    for (new i = 0; i < limit; i++)
-        dest[i] = ' ';
-
-    dest[limit] = EOS;
+ReportSaveError(const UserId){
+    new Path[PLATFORM_MAX_PATH];
+    SprLett_GetSavesFile(Path, charsmax(Path));
+    client_print(UserId, print_center, "%l", "CMD_SAVE_FAILED");
+    client_print(UserId, print_console, "%l", "CMD_SAVE_FAILED_PATH", Path);
 }
 
 stock MarqueeEditor_TrimString(string[], maxlength){

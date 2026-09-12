@@ -10,7 +10,6 @@
 #include "SprLett-Core/Ver"
 
 #define IntToStr(%1) fmt("%d",%1)
-#define CreateFile(%1) fclose(fopen(%1,"w"))
 
 #define var_WordSaveId var_iuser4
 #define offset__var_WordSaveId 10
@@ -20,8 +19,11 @@ new const CFGS_DIR[] = "/plugins/SpriteLetters/Saves/";
 new const PLUG_NAME[] = "[SprLett] Saver";
 #define PLUG_VER SPRLETT_VERSION
 
-new JSON:gSaves;
+new JSON:gSaves = Invalid_JSON;
 new gSavesFile[PLATFORM_MAX_PATH];
+new gSavesDir[PLATFORM_MAX_PATH];
+new bool:gSaveBlocked = true;
+new bool:gSavesFileExpected;
 new gLastSaveId = 0;
 
 SyncWordDirWithAngles(const WordEnt){
@@ -46,43 +48,75 @@ public plugin_init(){
 public plugin_natives(){
     register_native("SprLett_SaveWord", "@_SaveWord");
     register_native("SprLett_UnSaveWord", "@_UnSaveWord");
+    register_native("SprLett_GetSavesFile", "@_GetSavesFile");
 }
 
-@_SaveWord(){
+@_GetSavesFile(){
+    return set_string(1, gSavesFile, get_param(2));
+}
+
+bool:@_SaveWord(){
     enum {Arg_WordEnt = 1}
     new WordEnt = get_param(Arg_WordEnt);
 
     if(!SprLett_Is(WordEnt, SL_Is_Word)){
         log_error(0, "Entity #%d is not a word.", WordEnt);
-        return;
+        return false;
     }
+
+    if(gSaveBlocked || gSaves == Invalid_JSON)
+        return false;
 
     new iId = get_entvar(WordEnt, var_WordSaveId)-offset__var_WordSaveId;
-    if(iId < 0){
-        gLastSaveId++;
-        iId = gLastSaveId;
-        set_entvar(WordEnt, var_WordSaveId, iId+offset__var_WordSaveId);
-    }
+    if(iId < 0)
+        iId = gLastSaveId + 1;
 
-    json_object_set_value(gSaves, IntToStr(iId), WordToJson(WordEnt));
-    SaveToFile();
+    new JSON:Candidate = json_deep_copy(gSaves);
+    new JSON:WordObj = WordToJson(WordEnt);
+    if(Candidate == Invalid_JSON || WordObj == Invalid_JSON){
+        if(Candidate != Invalid_JSON) json_free(Candidate);
+        if(WordObj != Invalid_JSON) json_free(WordObj);
+        return false;
+    }
+    new bool:Updated = json_object_set_value(Candidate, IntToStr(iId), WordObj);
+    json_free(WordObj);
+    if(!Updated || !SaveToFile(Candidate)){
+        json_free(Candidate);
+        return false;
+    }
+    json_free(gSaves);
+    gSaves = Candidate;
+    gLastSaveId = max(gLastSaveId, iId);
+    set_entvar(WordEnt, var_WordSaveId, iId+offset__var_WordSaveId);
+    return true;
 }
 
-@_UnSaveWord(){
+bool:@_UnSaveWord(){
     enum {Arg_WordEnt = 1}
     new WordEnt = get_param(Arg_WordEnt);
 
     if(!SprLett_Is(WordEnt, SL_Is_Word)){
         log_error(0, "Entity #%d is not a word.", WordEnt);
-        return;
+        return false;
     }
 
     new iId = get_entvar(WordEnt, var_WordSaveId)-offset__var_WordSaveId;
     if(iId < 0)
-        return;
+        return true;
+    if(gSaveBlocked || gSaves == Invalid_JSON)
+        return false;
     
-    json_object_remove(gSaves, IntToStr(iId));
-    SaveToFile();
+    new JSON:Candidate = json_deep_copy(gSaves);
+    if(Candidate == Invalid_JSON)
+        return false;
+    if(!json_object_remove(Candidate, IntToStr(iId)) || !SaveToFile(Candidate)){
+        json_free(Candidate);
+        return false;
+    }
+    json_free(gSaves);
+    gSaves = Candidate;
+    set_entvar(WordEnt, var_WordSaveId, 0);
+    return true;
 }
 
 public plugin_cfg(){
@@ -90,17 +124,25 @@ public plugin_cfg(){
     rh_get_mapname(MapName, charsmax(MapName), MNT_TRUE);
 
     get_localinfo("amxx_configsdir", gSavesFile, charsmax(gSavesFile));
+    if(!gSavesFile[0] || strlen(gSavesFile) + strlen(CFGS_DIR) + strlen(MapName) + 9 > charsmax(gSavesFile)){
+        log_amx("[ERROR] Invalid or overlong saves path. Saving disabled.");
+        return;
+    }
     add(gSavesFile, charsmax(gSavesFile), CFGS_DIR);
-    if(!dir_exists(gSavesFile))
-        mkdir(gSavesFile);
+    copy(gSavesDir, charsmax(gSavesDir), gSavesFile);
     add(gSavesFile, charsmax(gSavesFile), fmt("%s.json", MapName));
 
+    new bool:PendingWrite = file_exists(fmt("%s.tmp", gSavesFile)) != 0;
     if(!file_exists(gSavesFile)){
         log_amx("[INFO] Saves for current map not found.");
         gSaves = json_init_object();
+        gSaveBlocked = PendingWrite || file_exists(fmt("%s.bak", gSavesFile));
+        if(gSaveBlocked)
+            log_amx("[ERROR] Interrupted save: recover '%s.tmp' / '%s.bak' before saving.", gSavesFile, gSavesFile);
         return;
     }
     
+    gSavesFileExpected = true;
     gSaves = json_parse(gSavesFile, true);
     if(gSaves == Invalid_JSON){
         log_amx("[WARNING] JSON syntax error. File '%s'.", gSavesFile);
@@ -113,6 +155,10 @@ public plugin_cfg(){
         gSaves = json_init_object();
         return;
     }
+
+    gSaveBlocked = PendingWrite;
+    if(gSaveBlocked)
+        log_amx("[ERROR] Pending '%s.tmp' preserved; saving disabled until recovery.", gSavesFile);
 
     gLastSaveId = 0;
     new sId[16], iId;
@@ -129,6 +175,11 @@ public plugin_cfg(){
         }
 
         new WordEnt = SprLett_InitWord();
+        if(!SprLett_Is(WordEnt, SL_Is_Word)){
+            json_free(WordObj);
+            log_amx("[ERROR] Cannot create saved word '%s'.", sId);
+            continue;
+        }
         JsonToWord(WordObj, WordEnt);
         set_entvar(WordEnt, var_WordSaveId, iId+offset__var_WordSaveId);
         SprLett_BuildWord(WordEnt);
@@ -137,18 +188,107 @@ public plugin_cfg(){
 }
 
 public plugin_end(){
-    SaveToFile();
-    json_free(gSaves);
+    // Explicit save/delete already commits a snapshot. Never rewrite on shutdown.
+    if(gSaves != Invalid_JSON)
+        json_free(gSaves);
 }
 
-SaveToFile(){
-    if(!file_exists(gSavesFile))
-        CreateFile(gSavesFile);
-    json_serial_to_file(gSaves, gSavesFile, false);
+bool:EnsureSaveDirectories(){
+    new Path[PLATFORM_MAX_PATH];
+    copy(Path, charsmax(Path), gSavesDir);
+    for(new i = 1; Path[i]; i++){
+        if(Path[i] != '/' && Path[i] != 92)
+            continue;
+        new Separator = Path[i];
+        Path[i] = EOS;
+        if(!dir_exists(Path) && mkdir(Path) != 0){
+            log_amx("[ERROR] Cannot create saves directory '%s'.", Path);
+            return false;
+        }
+        Path[i] = Separator;
+    }
+    return dir_exists(Path) != 0;
+}
+
+bool:SaveToFile(const JSON:Candidate){
+    if(gSaveBlocked || !EnsureSaveDirectories())
+        return false;
+
+    new Temp[PLATFORM_MAX_PATH], Backup[PLATFORM_MAX_PATH];
+    formatex(Temp, charsmax(Temp), "%s.tmp", gSavesFile);
+    formatex(Backup, charsmax(Backup), "%s.bak", gSavesFile);
+    if(file_exists(Temp)){
+        log_amx("[ERROR] Pending file '%s' preserved. Recover it before saving.", Temp);
+        gSaveBlocked = true;
+        return false;
+    }
+
+    new bool:HadFile = file_exists(gSavesFile) != 0;
+    if(HadFile != gSavesFileExpected){
+        log_amx("[ERROR] Save '%s' appeared or disappeared outside Saver. Reload after recovery.", gSavesFile);
+        gSaveBlocked = true;
+        return false;
+    }
+    if(!HadFile && file_exists(Backup)){
+        log_amx("[ERROR] Main save missing; backup '%s' preserved.", Backup);
+        gSaveBlocked = true;
+        return false;
+    }
+    if(HadFile){
+        new JSON:Current = json_parse(gSavesFile, true);
+        new bool:Unchanged = Current != Invalid_JSON && json_equals(Current, gSaves);
+        if(Current != Invalid_JSON) json_free(Current);
+        if(!Unchanged){
+            log_amx("[ERROR] Save '%s' changed or became unreadable. Reload the map after recovery.", gSavesFile);
+            gSaveBlocked = true;
+            return false;
+        }
+    }
+
+    if(!json_serial_to_file(Candidate, Temp, false)){
+        log_amx("[ERROR] Cannot write temporary save '%s'.", Temp);
+        if(file_exists(Temp)) delete_file(Temp);
+        return false;
+    }
+    new JSON:Check = json_parse(Temp, true);
+    new bool:Verified = Check != Invalid_JSON && json_equals(Check, Candidate);
+    if(Check != Invalid_JSON) json_free(Check);
+    if(!Verified){
+        log_amx("[ERROR] Temporary save '%s' failed readback.", Temp);
+        delete_file(Temp);
+        return false;
+    }
+
+    if(HadFile){
+        if(file_exists(Backup) && !delete_file(Backup)){
+            log_amx("[ERROR] Cannot replace backup '%s'.", Backup);
+            delete_file(Temp);
+            return false;
+        }
+        if(!rename_file(gSavesFile, Backup, 1)){
+            log_amx("[ERROR] Cannot move '%s' to backup.", gSavesFile);
+            delete_file(Temp);
+            return false;
+        }
+    }
+    if(!rename_file(Temp, gSavesFile, 1)){
+        log_amx("[ERROR] Cannot install new save '%s'.", gSavesFile);
+        if(HadFile && !rename_file(Backup, gSavesFile, 1)){
+            log_amx("[ERROR] Restore failed. Recover '%s' and '%s' manually.", Backup, Temp);
+            gSaveBlocked = true;
+        } else {
+            delete_file(Temp);
+        }
+        return false;
+    }
+    gSavesFileExpected = true;
+    return true;
 }
 
 JSON:WordToJson(const WordEnt){
     new JSON:WordObj = json_init_object();
+    if(WordObj == Invalid_JSON)
+        return Invalid_JSON;
     new Float:Vec[3], Str[WORD_MAX_LENGTH], Float:Fl, i;
 
     get_entvar(WordEnt, var_origin, Vec);
@@ -163,27 +303,15 @@ JSON:WordToJson(const WordEnt){
     get_entvar(WordEnt, var_rendercolor, Vec);
     json_object_set_vector(WordObj, "Color", Vec);
 
-    // Handle Text field based on marquee status
-    new marqueeWidth_val = get_entvar(WordEnt, var_iuser2); // var_MarqueeWidth
-    if (marqueeWidth_val > 0) {
-        get_entvar(WordEnt, var_netname, Str, charsmax(Str)); // var_MarqueeText (full text)
-        json_object_set_string(WordObj, "Text", Str);
-
-        // Save other marquee properties
-        i = get_entvar(WordEnt, var_iuser1); // var_MarqueeID
-        json_object_set_number(WordObj, "MarqueeID", i);
-        json_object_set_number(WordObj, "MarqueeWidth", marqueeWidth_val); // Already have it
-
-        Fl = get_entvar(WordEnt, var_fuser3); // var_MarqueeSpeed
-        json_object_set_real(WordObj, "MarqueeSpeed", Fl);
-        
-        Fl = get_entvar(WordEnt, var_fuser4); // var_MarqueeOffset
-        json_object_set_real(WordObj, "MarqueeOffset", Fl);
-
-    } else { // Not a marquee, save var_WordText as "Text"
-        get_entvar(WordEnt, var_SL_WordText, Str, charsmax(Str)); // var_message
-        json_object_set_string(WordObj, "Text", Str);
-    }
+    get_entvar(WordEnt, var_SL_MarqueeText, Str, charsmax(Str));
+    if(!Str[0])
+        get_entvar(WordEnt, var_SL_WordText, Str, charsmax(Str));
+    json_object_set_string(WordObj, "Text", Str);
+    json_object_set_number(WordObj, "MarqueeID", get_entvar(WordEnt, var_SL_MarqueeID));
+    json_object_set_number(WordObj, "MarqueeWidth", get_entvar(WordEnt, var_SL_MarqueeWidth));
+    json_object_set_real(WordObj, "MarqueeSpeed", Float:get_entvar(WordEnt, var_SL_MarqueeSpeed));
+    json_object_set_real(WordObj, "MarqueeOffset", Float:get_entvar(WordEnt, var_SL_MarqueeOffset));
+    json_object_set_real(WordObj, "Scale", Float:get_entvar(WordEnt, var_scale));
 
     get_entvar(WordEnt, var_SL_WordCharset, Str, charsmax(Str)); // var_noise
     json_object_set_string(WordObj, "Charset", Str);
@@ -231,8 +359,8 @@ JsonToWord(const JSON:WordObj, const WordEnt){
 
     // Load marquee properties (they will default to 0/empty if not in JSON)
     new marqueeId_val = json_object_get_number(WordObj, "MarqueeID");
-    new loadedMarqueeWidth = json_object_get_number(WordObj, "MarqueeWidth");
-    new Float:marqueeSpeed_val = json_object_get_real(WordObj, "MarqueeSpeed");
+    new loadedMarqueeWidth = clamp(json_object_get_number(WordObj, "MarqueeWidth"), 0, WORD_MAX_LENGTH - 1);
+    new Float:marqueeSpeed_val = floatmax(0.0, json_object_get_real(WordObj, "MarqueeSpeed"));
     new Float:marqueeOffset_val = json_object_get_real(WordObj, "MarqueeOffset");
 
     set_entvar(WordEnt, var_iuser1, marqueeId_val);     // var_MarqueeID
@@ -240,13 +368,9 @@ JsonToWord(const JSON:WordObj, const WordEnt){
     set_entvar(WordEnt, var_fuser3, marqueeSpeed_val); // var_MarqueeSpeed
     set_entvar(WordEnt, var_fuser4, marqueeOffset_val);// var_MarqueeOffset
 
-    if (loadedMarqueeWidth > 0) {
-        // It's a marquee, so the "Text" we loaded is the full MarqueeText
-        set_entvar(WordEnt, var_netname, Str); // var_MarqueeText
-    } else {
-        // Not a marquee, ensure MarqueeText is empty
-        set_entvar(WordEnt, var_netname, "");
-    }
+    set_entvar(WordEnt, var_SL_MarqueeText, Str);
+    if(json_object_has_value(WordObj, "Scale"))
+        set_entvar(WordEnt, var_scale, json_object_get_real(WordObj, "Scale"));
     
     json_object_get_string(WordObj, "Charset", Str, charsmax(Str));
     set_entvar(WordEnt, var_SL_WordCharset, Str); // var_noise
@@ -267,7 +391,9 @@ JsonToWord(const JSON:WordObj, const WordEnt){
 }
 
 json_object_set_vector(JSON:Obj, const Name[], const Float:Vec[], const Size = 3, const bool:DotNot = false){
-    json_object_set_value(Obj, Name, json_init_vector(Vec, Size), DotNot);
+    new JSON:Vector = json_init_vector(Vec, Size);
+    json_object_set_value(Obj, Name, Vector, DotNot);
+    json_free(Vector);
 }
 
 JSON:json_init_vector(const Float:Vec[], const Size = 3){

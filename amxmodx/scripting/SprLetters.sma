@@ -255,6 +255,74 @@ InitWord(const Word[], const Float:Origin[3], MarqueeID = 0, MarqueeWidth = 0, F
     return WordEnt;
 }
 
+bool:SetWordText(const WordEnt, const Text[]) {
+    if (!IsWord(WordEnt))
+        return false;
+
+    set_entvar(WordEnt, var_MarqueeText, Text);
+    set_entvar(WordEnt, var_WordText, Text);
+    new Float:StartOffset = Float:get_entvar(WordEnt, var_MarqueeSpeed) > 0.0
+        ? float(get_entvar(WordEnt, var_MarqueeWidth)) : 0.0;
+    set_entvar(WordEnt, var_MarqueeOffset, StartOffset);
+    DestroyWord(WordEnt);
+    BuildWord(WordEnt);
+    return true;
+}
+
+FindFreeMarqueeId() {
+    new Trie:Used = TrieCreate();
+    if (Used == Invalid_Trie)
+        return 0;
+
+    new Ent = -1, Key[16];
+    while ((Ent = rg_find_ent_by_class(Ent, WORD_CLASSNAME)) > 0) {
+        num_to_str(get_entvar(Ent, var_MarqueeID), Key, charsmax(Key));
+        TrieSetCell(Used, Key, 1);
+    }
+    new Id = 1;
+    for (;;) {
+        num_to_str(Id, Key, charsmax(Key));
+        if (!TrieKeyExists(Used, Key))
+            break;
+        Id++;
+    }
+    TrieDestroy(Used);
+    return Id;
+}
+
+bool:SetMarqueeWidth(const WordEnt, Width) {
+    if (!IsWord(WordEnt))
+        return false;
+
+    Width = clamp(Width, 0, WORD_MAX_LENGTH - 1);
+    new OldWidth = get_entvar(WordEnt, var_MarqueeWidth);
+    new Text[WORD_MAX_LENGTH];
+    get_entvar(WordEnt, OldWidth > 0 ? var_MarqueeText : var_WordText, Text, charsmax(Text));
+
+    if (Width > 0 && get_entvar(WordEnt, var_MarqueeID) == 0) {
+        new Id = FindFreeMarqueeId();
+        if (Id == 0)
+            return false;
+        set_entvar(WordEnt, var_MarqueeID, Id);
+    }
+
+    set_entvar(WordEnt, var_MarqueeText, Text);
+    set_entvar(WordEnt, var_WordText, Text);
+    set_entvar(WordEnt, var_MarqueeWidth, Width);
+    if (Width == 0) {
+        set_entvar(WordEnt, var_MarqueeSpeed, 0.0);
+        set_entvar(WordEnt, var_MarqueeOffset, 0.0);
+    } else if (OldWidth != Width) {
+        if (OldWidth <= 0 && Float:get_entvar(WordEnt, var_MarqueeSpeed) <= 0.0)
+            set_entvar(WordEnt, var_MarqueeSpeed, DEFAULT_MARQUEE_SPEED);
+        new Float:StartOffset = Float:get_entvar(WordEnt, var_MarqueeSpeed) > 0.0 ? float(Width) : 0.0;
+        set_entvar(WordEnt, var_MarqueeOffset, StartOffset);
+    }
+    DestroyWord(WordEnt);
+    BuildWord(WordEnt);
+    return true;
+}
+
 public Marquee_Think() {
     new ent = -1;
     // Loop through all entities that are potential "Word" entities
@@ -328,7 +396,7 @@ public Marquee_Think() {
  *
  * @noreturn
  */
-UpdateMarquee(const WordEnt) {
+UpdateMarquee(const WordEnt, const bool:EnsureLetters = true) {
     if (!IsWord(WordEnt))
         return;
 
@@ -345,15 +413,12 @@ UpdateMarquee(const WordEnt) {
 
     new letterCount = CountWordLetters(WordEnt);
     if (letterCount != renderWidth) {
-        new placeholder[WORD_MAX_LENGTH];
-        MarqueeFillWindowString(placeholder, charsmax(placeholder), renderWidth);
-        set_entvar(WordEnt, var_WordText, placeholder);
+        // A failed allocation must not recursively attempt another rebuild.
+        if (!EnsureLetters)
+            return;
         DestroyWord(WordEnt);
         BuildWord(WordEnt);
-        letterCount = CountWordLetters(WordEnt);
-        if (letterCount != renderWidth) {
-            return;
-        }
+        return;
     }
 
     new Float:currentOffsetF = get_entvar(WordEnt, var_MarqueeOffset);
@@ -463,7 +528,14 @@ BuildWord(const WordEnt){
     VecMult(StepVec, WordOffset, OffsetVec);
 
     new Word[WORD_MAX_LENGTH];
-    get_entvar(WordEnt, var_WordText, Word, charsmax(Word));
+    new marqueeWidth = clamp(get_entvar(WordEnt, var_MarqueeWidth), 0, WORD_MAX_LENGTH - 1);
+    new bool:isMarquee = marqueeWidth > 0;
+    if (isMarquee) {
+        set_entvar(WordEnt, var_MarqueeWidth, marqueeWidth);
+        MarqueeFillWindowString(Word, charsmax(Word), marqueeWidth);
+    } else {
+        get_entvar(WordEnt, var_WordText, Word, charsmax(Word));
+    }
 
     new Float:Origin[3];
     get_entvar(WordEnt, var_origin, Origin);
@@ -472,7 +544,6 @@ BuildWord(const WordEnt){
     get_entvar(WordEnt, var_WordCharset, CharsetName, charsmax(CharsetName));
     GetCharset(CharsetName, Charset);
 
-    new bool:isMarquee = (get_entvar(WordEnt, var_MarqueeWidth) > 0);
     new PrevLetterEnt = WordEnt;
     new Letter[LETTER_SIZE], Next = 0;
     while(GetLetterFromStr(Word, Letter, Next)){
@@ -498,6 +569,8 @@ BuildWord(const WordEnt){
 
     // Замыкание списка
     set_entvar(PrevLetterEnt, var_chain, WordEnt);
+    if (isMarquee)
+        UpdateMarquee(WordEnt, false);
 }
 
 /**
@@ -728,9 +801,7 @@ public Cmd_Marquee_Text(id, level, cid) {
     while((ent = rg_find_ent_by_class(ent, WORD_CLASSNAME)) > 0) {
         if(!IsWord(ent)) continue;
         if (get_entvar(ent, var_MarqueeID) == targetId && get_entvar(ent, var_MarqueeWidth) > 0) {
-            set_entvar(ent, var_MarqueeText, text);
-            set_entvar(ent, var_MarqueeOffset, float(get_entvar(ent, var_MarqueeWidth))); 
-            UpdateMarquee(ent);
+            SetWordText(ent, text);
             found = true;
         }
     }
@@ -761,7 +832,7 @@ public Cmd_Marquee_Width(id, level, cid) {
          console_print(id, "Error: Marquee ID cannot be 0 unless setting width to 0.");
          return PLUGIN_HANDLED;
     }
-    if (width < 0) width = 0;
+    width = clamp(width, 0, WORD_MAX_LENGTH - 1);
 
     new bool:found_any = false;
     new ent = -1;
@@ -769,34 +840,10 @@ public Cmd_Marquee_Width(id, level, cid) {
         if(!IsWord(ent)) continue;
 
         if (get_entvar(ent, var_MarqueeID) == targetId || (targetId == 0 && width == 0) ) {
-            new oldWidth = get_entvar(ent, var_MarqueeWidth);
-            set_entvar(ent, var_MarqueeWidth, width);
-
-            if (width > 0) {
-                if (oldWidth <= 0) {
-                    set_entvar(ent, var_MarqueeOffset, float(width));
-                    if (get_entvar(ent, var_MarqueeSpeed) <= 0.0) {
-                        set_entvar(ent, var_MarqueeSpeed, DEFAULT_MARQUEE_SPEED);
-                    }
-                }
-                if (oldWidth != width) {
-                    new effectiveWidth = width;
-                    if (effectiveWidth > WORD_MAX_LENGTH - 1) {
-                        effectiveWidth = WORD_MAX_LENGTH - 1;
-                    }
-                    new placeholder[WORD_MAX_LENGTH];
-                    MarqueeFillWindowString(placeholder, charsmax(placeholder), effectiveWidth);
-                    set_entvar(ent, var_WordText, placeholder);
-                    DestroyWord(ent);
-                    BuildWord(ent);
-                }
-                UpdateMarquee(ent);
-            } else if (oldWidth > 0) {
-                set_entvar(ent, var_WordText, "");
-                DestroyWord(ent);
-                BuildWord(ent);
-            }
-            found_any = true;
+            if (targetId == 0 && get_entvar(ent, var_MarqueeWidth) <= 0)
+                continue;
+            if (SetMarqueeWidth(ent, width))
+                found_any = true;
         }
     }
     if(found_any){
@@ -821,7 +868,7 @@ public Cmd_Marquee_Speed(id, level, cid) {
 
     new speed_str[32];
     read_argv(2, speed_str, charsmax(speed_str));
-    new Float:speed = str_to_float(speed_str);
+    new Float:speed = floatmax(0.0, str_to_float(speed_str));
 
     if (targetId == 0) {
         console_print(id, "Error: Marquee ID cannot be 0 for this command.");
