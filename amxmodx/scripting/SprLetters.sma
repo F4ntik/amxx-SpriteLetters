@@ -6,6 +6,7 @@
 #include <reapi>
 #include <fakemeta>
 #include <SprLetters>
+#include <SprLett-Gaming>
 #include "SprLett-Core/Ver"
 
 #pragma semicolon 1
@@ -96,6 +97,7 @@ new SprCharset[SprLett_CharsetData];
 
 new bool:EditMode = false;
 new Trie:Charsets;
+new GamingCharset[SprLett_CharsetData];
 
 #include "SprLett-Core/Panel"
 
@@ -111,6 +113,8 @@ public plugin_precache(){
     if(!TrieGetArray(Charsets, "Default", SprCharset, SprLett_CharsetData))
         TrieGetFirstArray(Charsets, SprCharset, SprLett_CharsetData);
     copy(CHARSET_DEFAULT_NAME, charsmax(CHARSET_DEFAULT_NAME), SprCharset[SL_CD_Name]);
+    if(!TrieGetArray(Charsets, SL_GAMING_CHARSET, GamingCharset, SprLett_CharsetData))
+        log_amx("[WARNING] Gaming_v1 is missing; gaming icons and aliases are disabled.");
 }
 
 new gWordRemovedForward;
@@ -524,8 +528,11 @@ UpdateMarquee(const WordEnt, const bool:EnsureLetters = true) {
 bool:BuildWord(const WordEnt){
     if(!IsWord(WordEnt)) return false;
     new Word[WORD_MAX_LENGTH], Width = clamp(get_entvar(WordEnt, var_MarqueeWidth), 0, WORD_MAX_LENGTH-1);
+    new Source[WORD_MAX_LENGTH];
+    get_entvar(WordEnt, Width ? var_MarqueeText : var_WordText, Source, charsmax(Source));
+    if(GamingCharset[SL_CD_SpriteIndex]) SprLett_ExpandGamingAliases(Source, charsmax(Source));
     if(Width) MarqueeFillWindowString(Word, charsmax(Word), Width);
-    else get_entvar(WordEnt, var_WordText, Word, charsmax(Word));
+    else copy(Word, charsmax(Word), Source);
 
     new Letters[WORD_MAX_LENGTH][LETTER_SIZE], Slots[WORD_MAX_LENGTH], Count, Cell, Next;
     new Char[LETTER_SIZE];
@@ -582,6 +589,8 @@ bool:BuildWord(const WordEnt){
     set_entvar(WordEnt, var_flags, FL_DORMANT);
     set_entvar(WordEnt, var_WordEnt, WordEnt);
     set_entvar(WordEnt, var_chain, Count ? Entities[0] : WordEnt);
+    set_entvar(WordEnt, var_MarqueeText, Source);
+    if(!Width) set_entvar(WordEnt, var_WordText, Source);
     if(Width) UpdateMarquee(WordEnt, false);
     PanelRefresh(WordEnt);
     return true;
@@ -664,12 +673,33 @@ CreateLetter(const Letter[LETTER_SIZE], const Float:Origin[3], const bool:ForWor
  */
 
 SetLetterCharset(const LetterEnt, const Charset[SprLett_CharsetData]){
-    set_entvar(LetterEnt, var_model, Charset[SL_CD_SpriteFile]);
-    set_entvar(LetterEnt, var_modelindex, Charset[SL_CD_SpriteIndex]);
-    set_entvar(LetterEnt, var_LetterCharset, Charset[SL_CD_Name]);
-
-    new Letter[LETTER_SIZE];
+    new Letter[LETTER_SIZE], Frame;
     get_entvar(LetterEnt, var_LetterText, Letter, charsmax(Letter));
+    new bool:WasColored = SprLett_IsGamingLetter(LetterEnt);
+    new bool:Colored = GamingCharset[SL_CD_SpriteIndex] != 0
+        && TrieGetCell(GamingCharset[SL_CD_Map], Letter, Frame)
+        && Frame > SL_GAMING_FIRST_FRAME;
+    new Actual[SprLett_CharsetData];
+    Actual = Charset;
+    if(Colored) Actual = GamingCharset;
+    set_entvar(LetterEnt, var_model, Actual[SL_CD_SpriteFile]);
+    set_entvar(LetterEnt, var_modelindex, Actual[SL_CD_SpriteIndex]);
+    set_entvar(LetterEnt, var_LetterCharset, Actual[SL_CD_Name]);
+    if(Colored){
+        new const Float:White[3] = {255.0, 255.0, 255.0};
+        set_entvar(LetterEnt, var_rendercolor, White);
+        set_entvar(LetterEnt, var_rendermode, kRenderTransTexture);
+    } else if(WasColored){
+        // Marquee cells are reused: restore the word's style after an icon leaves.
+        new Owner = get_entvar(LetterEnt, var_WordEnt);
+        if(IsWord(Owner)){
+            copy_entvar_vec(Owner, var_rendercolor, LetterEnt);
+            copy_entvar_num(Owner, var_rendermode, LetterEnt);
+        } else {
+            set_entvar(LetterEnt, var_rendercolor, SprColor);
+            set_entvar(LetterEnt, var_rendermode, SprParams[SL_P_RenderMode]);
+        }
+    }
 
     new Effects = get_entvar(LetterEnt, var_effects);
     if(equal(Letter, " ")){
@@ -682,7 +712,7 @@ SetLetterCharset(const LetterEnt, const Charset[SprLett_CharsetData]){
     if(Effects & EF_NODRAW)
         set_entvar(LetterEnt, var_effects, Effects & ~EF_NODRAW);
 
-    set_entvar(LetterEnt, var_frame, float(GetCharNum(Letter, Charset[SL_CD_Map])));
+    set_entvar(LetterEnt, var_frame, float(GetCharNum(Letter, Actual[SL_CD_Map])));
 }
 /**
  * Удаляет все буквы слова

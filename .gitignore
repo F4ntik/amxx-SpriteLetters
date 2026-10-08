@@ -3,3 +3,6 @@
 .build
 compilator_1_9_0/
 local.build-config
+__pycache__/
+*.pyc
+!dist/*.zip

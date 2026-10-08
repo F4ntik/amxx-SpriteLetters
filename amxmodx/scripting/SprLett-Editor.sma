@@ -7,6 +7,7 @@
 #include <fakemeta>
 #include <vector>
 #include <SprLetters>
+#include <SprLett-Gaming>
 #include "SprLett-Core/Ver"
 
 #pragma semicolon 1
@@ -173,6 +174,7 @@ public plugin_init(){
     RegisterClCmds(MARQUEE_SETTEXT_CMD, "@Cmd_MarqueeSetText");
     RegisterClCmds(MARQUEE_RESET_OFFSET_CMD, "@Cmd_MarqueeResetOffset");
 
+    RegisterClCmds("slemoji", "@Cmd_EmojiMenu");
     MenuCmds_Init();
 }
 

@@ -1,1 +1,1 @@
-stock const SPRLETT_VERSION[] = "1.4.2-bones-dev";
+stock const SPRLETT_VERSION[] = "1.4.3-gaming-dev";

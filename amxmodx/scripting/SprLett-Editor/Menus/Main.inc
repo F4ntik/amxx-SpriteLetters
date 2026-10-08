@@ -29,6 +29,7 @@ Menu_Main(const UserId){
 
 Menu_More(const UserId){
     new MenuId = menu_create("Табличка: настройки и действия", "@MenuH_More");
+    menu_additem(MenuId, "Добавить игровой значок", "#slemoji");
     menu_additem(MenuId, "Цвет текста", fmt("#%s", COLORMENU_CMD));
     menu_additem(MenuId, "Прозрачность и отображение", fmt("#%s", RENDERMENU_CMD));
     menu_additem(MenuId, "Шрифт и расстояние между буквами", fmt("#%s", ATTRSMENU_CMD));
@@ -68,4 +69,38 @@ new gConfirmDelete[MAX_PLAYERS+1];
         @Cmd_Remove(UserId);
     gConfirmDelete[UserId] = 0;
     Menu_Main(UserId);
+}
+
+@Cmd_EmojiMenu(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CHECK_WORD(UserId)
+    if(!SprLett_HasCharset(SL_GAMING_CHARSET)){
+        client_print(UserId, print_chat, "[Табличка] Установите Gaming_v1 и смените карту для загрузки значков.");
+        return;
+    }
+    new const Names[][] = {"Прицел", "Оружие", "Бомба", "Щит", "Череп", "Огонь", "Трофей", "Мечи", "Команда CT", "Команда T"};
+    new MenuId = menu_create("Добавить значок в конец текста", "@MenuH_Emoji");
+    for(new i; i < sizeof Names; i++)
+        menu_additem(MenuId, fmt("%s  %s", Names[i], SL_GAMING_ALIASES[i]));
+    menu_setprop(MenuId, MPROP_EXITNAME, "Назад");
+    menu_display(UserId, MenuId);
+}
+
+@MenuH_Emoji(const UserId, const MenuId, const ItemId){
+    menu_destroy(MenuId);
+    CMD_CHECK_ACCESS(UserId)
+    CHECK_WORD(UserId)
+    if(ItemId < 0){ Menu_More(UserId); return; }
+    if(ItemId >= sizeof SL_GAMING_GLYPHS) return;
+    new Text[WORD_MAX_LENGTH];
+    get_entvar(gSelWord[UserId], var_SL_MarqueeText, Text, charsmax(Text));
+    new Len = strlen(Text), Separator = Len > 0 && Text[Len-1] != ' ';
+    if(Len + Separator + strlen(SL_GAMING_GLYPHS[ItemId]) > charsmax(Text)){
+        client_print(UserId, print_chat, "[Табличка] Текст заполнен. Сократите его перед добавлением значка.");
+    } else {
+        if(Separator) add(Text, charsmax(Text), " ");
+        add(Text, charsmax(Text), SL_GAMING_GLYPHS[ItemId]);
+        if(!SprLett_SetWordText(gSelWord[UserId], Text)) ReportBuildError(UserId);
+    }
+    @Cmd_EmojiMenu(UserId);
 }

@@ -1,6 +1,7 @@
 #include <amxmodx>
 #include <reapi>
 #include <SprLetters>
+#include <SprLett-Gaming>
 
 new const Float:RGBFrom[3] = {0.0, 255.0, 0.0};
 new const Float:RGBTo[3] = {0.0, 0.0, 255.0};
@@ -24,7 +25,7 @@ public plugin_init(){
     if(Len <= 1){
         if(Len == 1){
             new It = Ent;
-            if(SprLett_WordIterNext(It))
+            if(SprLett_WordIterNext(It) && !SprLett_IsGamingLetter(It))
                 set_entvar(It, var_rendercolor, RGBFrom);
         }
         return;
@@ -35,7 +36,7 @@ public plugin_init(){
     RGBCurrent = RGBFrom;
 
     while(SprLett_WordIterNext(Ent)){
-        set_entvar(Ent, var_rendercolor, RGBCurrent);
+        if(!SprLett_IsGamingLetter(Ent)) set_entvar(Ent, var_rendercolor, RGBCurrent);
         for(new i = 0; i < 3; i++)
             RGBCurrent[i] += RGBDelta[i];
     }

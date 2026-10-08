@@ -1,0 +1,21 @@
+{
+  "bytes": 7388,
+  "bones": 4,
+  "controllerBindings": 3,
+  "networkControls": 2,
+  "dimensionsChecked": 3509,
+  "placementCases": 90,
+  "sequenceBounds": [
+    [
+      -1.5,
+      -496.0,
+      -8.0
+    ],
+    [
+      1.5,
+      16.0,
+      120.0
+    ]
+  ],
+  "boundary": "Compiled MDL + CPU geometry/reference placement checks; not tested in CS 1.6"
+}
