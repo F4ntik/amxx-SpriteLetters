@@ -1,4 +1,4 @@
-# SpriteLetters 1.4.2-bones-dev
+# Рамка на костях — введена в 1.4.2, включена в 1.4.3
 
 Локальный кандидат от 8 октября 2026: объёмная рамка и фон теперь занимают один игровой объект. Для размера 256 × 64 в прежней 1.4.1 требовалось 35 деталей; буквы по-прежнему имеют собственные объекты.
 
@@ -52,8 +52,8 @@
 
 ## Исходники
 
-source/SpriteLetters содержит текущие исходники и модель. tools/build_frame.py генерирует SMD/QC и текстуры из стандартной библиотеки Python; затем из model-source запустите StudioMDL с frame.qc. Результат попадёт в assets/models/SprLett/frame_bones_v1.mdl. Проверка: python tools/build_frame.py --check из source/SpriteLetters.
+source/SpriteLetters в установочном ZIP содержит исходники плагинов, генераторы и ресурсы. tools/build_frame.py генерирует SMD/QC и текстуры из стандартной библиотеки Python; затем из model-source запустите StudioMDL с frame.qc. Результат попадёт в assets/models/SprLett/frame_bones_v1.mdl. Проверка: python tools/build_frame.py --check из source/SpriteLetters.
 
-Состояние MDL при работе: sequence=0, frame=0, framerate=0. Второй кадр последовательности нужен компилятору только для максимальных границ, он не проигрывается. controller[0]=(width-32)/4; controller[1]=(height-16)/4. Подробности компилятора — docs/compiler-provenance.md. Журналы и ведомость сборки — outputs; все файлы перечислены в MANIFEST.sha256.
+Состояние MDL при работе: sequence=0, frame=0, framerate=0. Второй кадр последовательности нужен компилятору только для максимальных границ, он не проигрывается. controller[0]=(width-32)/4; controller[1]=(height-16)/4. Подробности компилятора — docs/compiler-provenance.md. Ведомость сборки — build-receipt.json в корне установочного ZIP; результат проверки модели — docs/model-check.json. Все файлы архива перечислены в MANIFEST.sha256.
 
 Это описание рамки из 1.4.2; в 1.4.3 также добавлены игровые значки (GAMING.md). Полный перенос на Metamod не выполнялся; вывод исследования — сначала уменьшать число объектов и измерять нагрузку, а при доказанном узком месте выносить его в нативный модуль.
