@@ -8,6 +8,14 @@ new const COLORMENU_CMD[] = "slcolormenu";
 new const MARQUEEMENU_CMD[] = "slmarqueemenu";
 
 MenuCmds_Init(){
+    RegisterClCmds("slcolorpreset", "@Cmd_ColorPreset");
+    RegisterClCmds("slcolorfinemenu", "@Cmd_ColorFine");
+    RegisterClCmds("slfontmenu", "@Cmd_FontMenu");
+    RegisterClCmds("slpanelmenu", "@Cmd_PanelMenu");
+    RegisterClCmds("slpanel", "@Cmd_Panel");
+    RegisterClCmds("slplace", "@Cmd_Place");
+    RegisterClCmds("slmoremenu", "@Cmd_MoreMenu");
+    RegisterClCmds("sldeleteconfirm", "@Cmd_DeleteConfirm");
     RegisterClCmds(MAINMENU_CMD, "@Cmd_MainMenu");
 
     RegisterClCmds(MOVEMENU_CMD, "@Cmd_MoveMenu");
@@ -67,14 +75,15 @@ MenuCmds_Init(){
 }
 
 bool:_CmdMenuHandle(const UserId, const MenuId, const ItemId, const bool:BackToMain = true){
-    if(ItemId == MENU_EXIT){
+    if(ItemId < 0){
         menu_destroy(MenuId);
         if(BackToMain)
             Menu_Main(UserId);
         return false;
     }
 
-    new Data[32];
+    if(!(get_user_flags(UserId) & EDIT_ACCESS)){ menu_destroy(MenuId); return false; }
+    new Data[64];
     menu_item_getinfo(MenuId, ItemId, _, Data, charsmax(Data));
     client_cmd(UserId, Data[1]);
     menu_destroy(MenuId);
@@ -90,3 +99,5 @@ bool:_CmdMenuHandle(const UserId, const MenuId, const ItemId, const bool:BackToM
 #include "SprLett-Editor/Menus/Color"
 #include "SprLett-Editor/Menus/Render"
 #include "SprLett-Editor/Menus/Attrs"
+
+#include "SprLett-Editor/Menus/Panel"

@@ -35,6 +35,12 @@ bool:GetLetterFromStr(const Str[], Letter[LETTER_SIZE], &Next = 0){
     }
     if(bytes >= LETTER_SIZE)
         bytes = LETTER_SIZE - 1;
+    new Remaining = strlen(Str[Next]);
+    if(bytes > Remaining){
+        Letter[0] = ' '; Letter[1] = EOS;
+        Next += Remaining;
+        return true;
+    }
     copy(Letter, bytes, Str[Next]);
     Next += bytes;
     return true;
@@ -56,7 +62,7 @@ SetEntSize(const Ent, const Float:Size){
     set_entvar(Ent, var_size, Size);
 }
 
-VecSumm(const Float:Vec1[3], const Float:Vec2[3], Float:Out[3]){
+stock VecSumm(const Float:Vec1[3], const Float:Vec2[3], Float:Out[3]){
     for(new i = 0; i < 3; i++)
         Out[i] = Vec1[i] + Vec2[i];
 }

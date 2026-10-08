@@ -46,6 +46,7 @@ public plugin_init(){
 }
 
 public plugin_natives(){
+    register_native("SprLett_IsWordSaved", "@_IsWordSaved");
     register_native("SprLett_SaveWord", "@_SaveWord");
     register_native("SprLett_UnSaveWord", "@_UnSaveWord");
     register_native("SprLett_GetSavesFile", "@_GetSavesFile");
@@ -68,14 +69,21 @@ bool:@_SaveWord(){
         return false;
 
     new iId = get_entvar(WordEnt, var_WordSaveId)-offset__var_WordSaveId;
-    if(iId < 0)
+    if(iId < 0){
+        if(gLastSaveId >= 999999998) return false;
         iId = gLastSaveId + 1;
+    }
 
     new JSON:Candidate = json_deep_copy(gSaves);
     new JSON:WordObj = WordToJson(WordEnt);
     if(Candidate == Invalid_JSON || WordObj == Invalid_JSON){
         if(Candidate != Invalid_JSON) json_free(Candidate);
         if(WordObj != Invalid_JSON) json_free(WordObj);
+        return false;
+    }
+    if(!ValidateSavedWord(WordObj)){
+        json_free(WordObj); json_free(Candidate);
+        log_amx("[ERROR] Invalid word parameters; save unchanged.");
         return false;
     }
     new bool:Updated = json_object_set_value(Candidate, IntToStr(iId), WordObj);
@@ -164,13 +172,19 @@ public plugin_cfg(){
     new sId[16], iId;
     for(new i = 0; i < json_object_get_count(gSaves); i++){
         json_object_get_name(gSaves, i, sId, charsmax(sId));
-        iId = str_to_num(sId);
+        if(!SaveId(sId, iId)){
+            gSaveBlocked = true;
+            log_amx("[ERROR] Invalid save ID at record %d; source preserved, saving disabled.", i);
+            continue;
+        }
         if(iId > gLastSaveId)
             gLastSaveId = iId;
 
         new JSON:WordObj = json_object_get_value_at(gSaves, i);
-        if(!json_is_object(WordObj)){
-            json_free(WordObj);
+        if(!ValidateSavedWord(WordObj)){
+            if(WordObj != Invalid_JSON) json_free(WordObj);
+            gSaveBlocked = true;
+            log_amx("[ERROR] Invalid word record %s; source preserved, saving disabled.", sId);
             continue;
         }
 
@@ -182,7 +196,14 @@ public plugin_cfg(){
         }
         JsonToWord(WordObj, WordEnt);
         set_entvar(WordEnt, var_WordSaveId, iId+offset__var_WordSaveId);
-        SprLett_BuildWord(WordEnt);
+        new bool:Built = SprLett_BuildWord(WordEnt);
+        if(Built && json_object_has_value(WordObj, "PanelWidth"))
+            Built = SprLett_SetPanel(WordEnt, json_object_get_number(WordObj, "PanelWidth"), json_object_get_number(WordObj, "PanelHeight"), json_object_get_number(WordObj, "PanelStyle"));
+        if(!Built){
+            SprLett_RemoveWord(WordEnt);
+            gSaveBlocked = true;
+            log_amx("[ERROR] Cannot load complete sign %s; saving disabled. Check entities and panel.spr.", sId);
+        }
         json_free(WordObj);
     }
 }
@@ -331,6 +352,12 @@ JSON:WordToJson(const WordEnt){
     i = get_entvar(WordEnt, var_SL_RotateMode);
     json_object_set_number(WordObj, "RotateMode", i);
 
+    new W, H, Style;
+    if(SprLett_GetPanel(WordEnt, W, H, Style)){
+        json_object_set_number(WordObj, "PanelWidth", W);
+        json_object_set_number(WordObj, "PanelHeight", H);
+        json_object_set_number(WordObj, "PanelStyle", Style);
+    }
     return WordObj;
 }
 
@@ -416,4 +443,24 @@ json_object_get_vector(const JSON:Obj, const Name[], Float:Vec[], const Size = 3
     new JSON:Item = json_object_get_value(Obj, Name, DotNot);
     json_get_vector(Item, Vec, Size);
     json_free(Item);
+}
+
+#include "SprLett-Core/SaveValidation"
+
+bool:@_IsWordSaved(){
+    new WordEnt = get_param(1);
+    if(!SprLett_Is(WordEnt, SL_Is_Word) || gSaves == Invalid_JSON) return false;
+    new Id = get_entvar(WordEnt, var_WordSaveId)-offset__var_WordSaveId;
+    if(Id < 0) return false;
+    new JSON:Stored = json_object_get_value(gSaves, IntToStr(Id));
+    new JSON:Now = WordToJson(WordEnt);
+    // Animation progress does not represent an unsaved edit.
+    new JSON:Copy = Stored == Invalid_JSON ? Invalid_JSON : json_deep_copy(Stored);
+    if(Copy != Invalid_JSON) json_object_remove(Copy, "MarqueeOffset");
+    if(Now != Invalid_JSON) json_object_remove(Now, "MarqueeOffset");
+    new bool:Same = Copy != Invalid_JSON && Now != Invalid_JSON && json_equals(Copy, Now);
+    if(Copy != Invalid_JSON) json_free(Copy);
+    if(Stored != Invalid_JSON) json_free(Stored);
+    if(Now != Invalid_JSON) json_free(Now);
+    return Same;
 }

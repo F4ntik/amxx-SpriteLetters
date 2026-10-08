@@ -20,6 +20,10 @@ enum {
     }
 
 public plugin_natives(){
+    register_native("SprLett_CreateWord", "@_CreateWord");
+    register_native("SprLett_HasCharset", "@_HasCharset");
+    register_native("SprLett_SetPanel", "@_SetPanel");
+    register_native("SprLett_GetPanel", "@_GetPanel");
     register_native("SprLett_CreateLetter", "@_CreateLetter");
 
     register_native("SprLett_GetWord", "@_GetWord");
@@ -116,7 +120,7 @@ bool:@_GetEditMode(){
 @_BuildWord(){
     enum {Arg_WordEnt = 1}
 
-    BuildWord(get_param(Arg_WordEnt));
+    return BuildWord(get_param(Arg_WordEnt));
 }
 
 bool:@_SetWordText(){
@@ -195,4 +199,19 @@ any:@_GetParam(PlugId, pCnt){
     }
 
     return 0;
+}
+
+@_CreateWord(){
+    new Text[WORD_MAX_LENGTH], Float:Origin[3];
+    get_string(1, Text, charsmax(Text));
+    get_array_f(2, Origin, 3);
+    new Ent = InitWord(Text, Origin);
+    if(Ent && BuildWord(Ent)) return Ent;
+    if(Ent) RemoveWord(Ent);
+    return 0;
+}
+bool:@_HasCharset(){
+    new Name[32];
+    get_string(1, Name, charsmax(Name));
+    return TrieKeyExists(Charsets, Name);
 }
