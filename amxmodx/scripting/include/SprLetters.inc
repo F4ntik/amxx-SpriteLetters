@@ -26,13 +26,15 @@ stock const SL_LIB_NAME[] = "SpriteLetters";
 
 #define var_SL_WordSaveId var_iuser4
 
-#define SprLett_CreateWord(%1) SprLett_BuildWord(SprLett_InitWord(%1))
+/** Creates a complete word, or returns zero without leaking an entity. */
+native SprLett_CreateWord(const Word[WORD_MAX_LENGTH] = "", const Float:Origin[3] = {0.0, 0.0, 0.0});
+native bool:SprLett_HasCharset(const Name[]);
 enum SprLett_RotateMode {
     SL_ROTATE_LETTERS = 0,
     SL_ROTATE_WORD
 };
 
-#define SprLett_RebuildWord(%1) SprLett_DestroyWord(%1);SprLett_BuildWord(%1)
+#define SprLett_RebuildWord(%1) SprLett_BuildWord(%1)
 
 enum _:SprLett_CharsetData {
     SL_CD_Name[32],
@@ -205,7 +207,12 @@ native SprLett_InitWord(const Word[WORD_MAX_LENGTH] = "", const Float:Origin[3] 
  *
  * @noreturn
  */
-native SprLett_BuildWord(const WordEnt);
+native bool:SprLett_BuildWord(const WordEnt);
+
+/** A composite panel: width 32..512, height 16..128, multiples of 4; width 0 removes it. Styles 0..2: sprite; 3: experimental modular MDL. */
+native bool:SprLett_SetPanel(const WordEnt, const Width, const Height = 32, const Style = 0);
+native bool:SprLett_GetPanel(const WordEnt, &Width, &Height, &Style);
+forward SprLett_WordRemoved(const WordEnt);
 
 /** Updates the full source text and immediately rebuilds its visible window. */
 native bool:SprLett_SetWordText(const WordEnt, const Text[]);
@@ -268,3 +275,6 @@ native bool:SprLett_UnSaveWord(const WordEnt);
 
 /** Gets the path used by Saver for an actionable write-error message. */
 native SprLett_GetSavesFile(Buffer[], const MaxLen);
+
+/** Compares editable content to its last explicit save (animation progress ignored). */
+native bool:SprLett_IsWordSaved(const WordEnt);

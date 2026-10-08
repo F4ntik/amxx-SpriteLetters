@@ -1,0 +1,42 @@
+$modelname "../assets/models/SprLett/panel_edges.mdl"
+$cd "."
+$cdtexture "."
+$scale 1.0
+$origin 0 0 0 -90
+$gamma 1.0
+$bodygroup pieces
+{
+ studio "edge_1_1"
+ studio "edge_1_2"
+ studio "edge_1_3"
+ studio "edge_1_4"
+ studio "edge_1_5"
+ studio "edge_1_6"
+ studio "edge_1_7"
+ studio "edge_1_8"
+ studio "edge_1_9"
+ studio "edge_2_1"
+ studio "edge_2_2"
+ studio "edge_2_3"
+ studio "edge_2_4"
+ studio "edge_2_5"
+ studio "edge_2_6"
+ studio "edge_2_7"
+ studio "edge_2_8"
+ studio "edge_2_9"
+ studio "edge_3_1"
+ studio "edge_3_2"
+ studio "edge_3_3"
+ studio "edge_3_4"
+ studio "edge_3_5"
+ studio "edge_3_6"
+ studio "edge_3_7"
+ studio "edge_4_1"
+ studio "edge_4_2"
+ studio "edge_4_3"
+ studio "edge_4_4"
+ studio "edge_4_5"
+ studio "edge_4_6"
+ studio "edge_4_7"
+}
+$sequence idle "idle" fps 1 loop

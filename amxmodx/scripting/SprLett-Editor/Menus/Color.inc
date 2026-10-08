@@ -5,11 +5,11 @@
 #include <amxmodx>
 #include <reapi>
 
-Menu_Color(const UserId){
+Menu_ColorFine(const UserId){
     new Word[WORD_MAX_LENGTH];
     get_entvar(gSelWord[UserId], var_SL_WordText, Word, charsmax(Word));
     
-    new MenuId = menu_create(fmt("%l", "MENUS_TITLE", Word), "@MenuH_Color");
+    new MenuId = menu_create(fmt("%l", "MENUS_TITLE", Word), "@MenuH_ColorFine");
 
     new Float:Color[3];
     get_entvar(gSelWord[UserId], var_rendercolor, Color);
@@ -31,8 +31,43 @@ Menu_Color(const UserId){
     menu_display(UserId, MenuId);
 }
 
-@MenuH_Color(const UserId, const MenuId, const ItemId){
+@MenuH_ColorFine(const UserId, const MenuId, const ItemId){
     if(_CmdMenuHandle(UserId, MenuId, ItemId))
-        client_cmd(UserId, COLORMENU_CMD);
+        client_cmd(UserId, "slcolorfinemenu");
 }
 
+
+Menu_Color(const UserId){
+    new MenuId = menu_create("Цвет надписи", "@MenuH_Color");
+    menu_additem(MenuId, "Белый", "$slcolorpreset 0");
+    menu_additem(MenuId, "Жёлтый", "$slcolorpreset 1");
+    menu_additem(MenuId, "Зелёный", "$slcolorpreset 2");
+    menu_additem(MenuId, "Голубой", "$slcolorpreset 3");
+    menu_additem(MenuId, "Красный", "$slcolorpreset 4");
+    menu_additem(MenuId, "Точная настройка RGB", "#slcolorfinemenu");
+    menu_setprop(MenuId, MPROP_EXITNAME, "Назад");
+    menu_display(UserId, MenuId);
+}
+@MenuH_Color(const UserId, const MenuId, const ItemId){
+    if(_CmdMenuHandle(UserId, MenuId, ItemId)) Menu_Color(UserId);
+}
+@Cmd_ColorFine(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CHECK_WORD(UserId)
+    Menu_ColorFine(UserId);
+}
+@Cmd_ColorPreset(const UserId){
+    CMD_CHECK_ACCESS(UserId)
+    CMD_CHECK_ARGC(UserId, 1)
+    CHECK_WORD(UserId)
+    new const Float:Colors[5][3] = {{255.0,255.0,255.0},{255.0,215.0,70.0},{105.0,235.0,125.0},{100.0,200.0,255.0},{255.0,100.0,90.0}};
+    new Index = read_argv_int(NULL_ARG+1);
+    if(Index < 0 || Index >= sizeof Colors) return;
+    new Float:Previous[3];
+    get_entvar(gSelWord[UserId], var_rendercolor, Previous);
+    set_entvar(gSelWord[UserId], var_rendercolor, Colors[Index]);
+    if(!SprLett_RebuildWord(gSelWord[UserId])){
+        set_entvar(gSelWord[UserId], var_rendercolor, Previous);
+        ReportBuildError(UserId);
+    }
+}

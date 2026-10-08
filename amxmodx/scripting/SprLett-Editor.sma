@@ -4,6 +4,7 @@
 
 #include <amxmodx>
 #include <reapi>
+#include <fakemeta>
 #include <vector>
 #include <SprLetters>
 #include "SprLett-Core/Ver"
@@ -227,14 +228,17 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     CMD_CHECK_ARGC(UserId, 3)
     CHECK_WORD(UserId)
 
-    new Float:Color[3];
+    new Float:Color[3], Float:Previous[3];
     get_entvar(gSelWord[UserId], var_rendercolor, Color);
+    get_entvar(gSelWord[UserId], var_rendercolor, Previous);
     Color[0] = floatclamp(Color[0] + read_argv_float(NULL_ARG+1), 0.0, 255.0);
     Color[1] = floatclamp(Color[1] + read_argv_float(NULL_ARG+2), 0.0, 255.0);
     Color[2] = floatclamp(Color[2] + read_argv_float(NULL_ARG+3), 0.0, 255.0);
     set_entvar(gSelWord[UserId], var_rendercolor, Color);
-
-    SprLett_RebuildWord(gSelWord[UserId]);
+    if(!SprLett_RebuildWord(gSelWord[UserId])){
+        set_entvar(gSelWord[UserId], var_rendercolor, Previous);
+        ReportBuildError(UserId);
+    }
 }
 
 @Cmd_RenderType(const UserId){
@@ -284,7 +288,7 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     CMD_CHECK_ARGC(UserId, 1)
 
     new Word[WORD_MAX_LENGTH];
-    read_argv(NULL_ARG+1, Word, charsmax(Word));
+    ReadCommandText(CREATE_CMD, Word, charsmax(Word));
 
     new Float:UserOrigin[3];
     get_entvar(UserId, var_origin, UserOrigin);
@@ -306,9 +310,14 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     );
 
     gSelWord[UserId] = SprLett_InitWord(Word, UserOrigin);
-    SprLett_BuildWord(gSelWord[UserId]);
-
+    if(!SprLett_BuildWord(gSelWord[UserId])){
+        SprLett_RemoveWord(gSelWord[UserId]);
+        gSelWord[UserId] = nullent;
+        client_print(UserId, print_chat, "[Табличка] Не удалось создать надпись: недостаточно объектов или недоступен шрифт.");
+        return;
+    }
     client_print(UserId, print_center, "%l", "CMD_WORD_CREATED", Word);
+    Menu_Main(UserId);
 }
 
 @Cmd_Charset(const UserId){
@@ -318,8 +327,17 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
 
     new CharsetName[32];
     read_argv(NULL_ARG+1, CharsetName, charsmax(CharsetName));
+    if(!SprLett_HasCharset(CharsetName)){
+        client_print(UserId, print_chat, "[Табличка] Шрифт не найден. Выберите установленный шрифт в меню.");
+        return;
+    }
+    new Previous[32];
+    get_entvar(gSelWord[UserId], var_SL_WordCharset, Previous, charsmax(Previous));
     set_entvar(gSelWord[UserId], var_SL_WordCharset, CharsetName);
-    SprLett_RebuildWord(gSelWord[UserId]);
+    if(!SprLett_RebuildWord(gSelWord[UserId])){
+        set_entvar(gSelWord[UserId], var_SL_WordCharset, Previous);
+        ReportBuildError(UserId);
+    }
 }
 
 @Cmd_Write(const UserId){
@@ -330,7 +348,9 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     new NewWord[WORD_MAX_LENGTH];
     ReadCommandText(WRITE_CMD, NewWord, charsmax(NewWord));
 
-    SprLett_SetWordText(gSelWord[UserId], NewWord);
+    if(!SprLett_SetWordText(gSelWord[UserId], NewWord))
+        client_print(UserId, print_chat, "[Табличка] Текст не изменён: недостаточно свободных объектов.");
+    Menu_Main(UserId);
 }
 
 @Cmd_Save(const UserId){
@@ -365,11 +385,8 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
 
     new WordEnt = gSelWord[UserId];
 
-    if (get_entvar(WordEnt, var_SL_MarqueeWidth) > 0) {
-        MarqueeEditor_Disable(WordEnt);
-    } else {
-        SprLett_SetMarqueeWidth(WordEnt, DEFAULT_MARQUEE_WIDTH);
-    }
+    new Width = get_entvar(WordEnt, var_SL_MarqueeWidth) > 0 ? 0 : DEFAULT_MARQUEE_WIDTH;
+    if(!SprLett_SetMarqueeWidth(WordEnt, Width)) ReportBuildError(UserId);
 
     Menu_Marquee(UserId);
 }
@@ -381,6 +398,7 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
 
     new WordEnt = gSelWord[UserId];
     new marqueeId = read_argv_int(NULL_ARG+1);
+    if(marqueeId < 0 || marqueeId >= 999999999) return;
     set_entvar(WordEnt, var_SL_MarqueeID, marqueeId);
 
     Menu_Marquee(UserId);
@@ -394,7 +412,7 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     new width = read_argv_int(NULL_ARG+1);
     new WordEnt = gSelWord[UserId];
 
-    SprLett_SetMarqueeWidth(WordEnt, width);
+    if(!SprLett_SetMarqueeWidth(WordEnt, width)) ReportBuildError(UserId);
 
     Menu_Marquee(UserId);
 }
@@ -404,7 +422,8 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
     CMD_CHECK_ARGC(UserId, 1)
     CHECK_WORD(UserId)
 
-    new Float:speed = floatmax(0.0, read_argv_float(NULL_ARG+1));
+    new Float:speed = read_argv_float(NULL_ARG+1);
+    if(!(speed >= 0.0 && speed <= 1000.0)) return;
 
     new WordEnt = gSelWord[UserId];
     set_entvar(WordEnt, var_SL_MarqueeSpeed, speed);
@@ -421,7 +440,7 @@ stock bool:ReadCommandText(const CmdName[], buffer[], const maxLen, const bool:T
 
     new Text[WORD_MAX_LENGTH];
     ReadCommandText(MARQUEE_SETTEXT_CMD, Text, charsmax(Text), true);
-    SprLett_SetWordText(WordEnt, Text);
+    if(!SprLett_SetWordText(WordEnt, Text)) ReportBuildError(UserId);
 
     Menu_Marquee(UserId);
 }
@@ -491,7 +510,8 @@ stock MarqueeEditor_TrimString(string[], maxlength){
 @Cmd_SetStep(const UserId){
     CMD_CHECK_ACCESS(UserId)
     CMD_CHECK_ARGC(UserId, 1)
-    gMoveStep[UserId] = read_argv_float(NULL_ARG+1);
+    new Float:Step = read_argv_float(NULL_ARG+1);
+    if(Step >= 0.1 && Step <= 512.0) gMoveStep[UserId] = Step;
 }
 
 @Cmd_Offset(const UserId){
@@ -500,7 +520,9 @@ stock MarqueeEditor_TrimString(string[], maxlength){
     CHECK_WORD(UserId)
 
     new Float:Offset = get_entvar(gSelWord[UserId], var_SL_WordOffset);
-    set_entvar(gSelWord[UserId], var_SL_WordOffset, Offset+read_argv_float(NULL_ARG+1));
+    Offset += read_argv_float(NULL_ARG+1);
+    if(!(Offset >= -512.0 && Offset <= 512.0)) return;
+    set_entvar(gSelWord[UserId], var_SL_WordOffset, Offset);
     SprLett_RebuildWord(gSelWord[UserId]);
 }
 
@@ -514,6 +536,12 @@ stock MarqueeEditor_TrimString(string[], maxlength){
     Origin[0] += read_argv_float(NULL_ARG+1);
     Origin[1] += read_argv_float(NULL_ARG+2);
     Origin[2] += read_argv_float(NULL_ARG+3);
+    for(new a; a < 3; a++){
+        if(!(Origin[a] >= -8192.0 && Origin[a] <= 8192.0)){
+            client_print(UserId, print_chat, "[Табличка] Координаты вне допустимого диапазона.");
+            return;
+        }
+    }
     set_entvar(gSelWord[UserId], var_origin, Origin);
     SprLett_RebuildWord(gSelWord[UserId]);
 }
@@ -533,6 +561,9 @@ stock MarqueeEditor_TrimString(string[], maxlength){
     Angles[0] += Delta[0];
     Angles[1] += Delta[1];
     Angles[2] += Delta[2];
+    for(new a; a < 3; a++){
+        if(!(Angles[a] >= -36000.0 && Angles[a] <= 36000.0)) return;
+    }
     set_entvar(gSelWord[UserId], var_angles, Angles);
 
     if(SprLett_RotateMode:get_entvar(gSelWord[UserId], var_SL_RotateMode) == SL_ROTATE_WORD)
@@ -547,6 +578,11 @@ stock MarqueeEditor_TrimString(string[], maxlength){
     CHECK_WORD(UserId)
 
     new WordEnt = gSelWord[UserId];
+    new PW, PH, PS;
+    if(SprLett_GetPanel(WordEnt, PW, PH, PS)){
+        client_print(UserId, print_chat, "[Табличка] Рамка поворачивается вместе с надписью. Уберите рамку для раздельного вращения букв.");
+        return;
+    }
     new SprLett_RotateMode:PrevMode = SprLett_RotateMode:get_entvar(WordEnt, var_SL_RotateMode);
     new SprLett_RotateMode:Mode = (PrevMode == SL_ROTATE_WORD) ? SL_ROTATE_LETTERS : SL_ROTATE_WORD;
     set_entvar(WordEnt, var_SL_RotateMode, _:Mode);
@@ -605,3 +641,20 @@ stock MarqueeEditor_TrimString(string[], maxlength){
 
 
 
+
+public client_disconnected(id){
+    gSelWord[id] = 0;
+    gConfirmDelete[id] = 0;
+    gMoveStep[id] = 1.0;
+}
+
+public SprLett_WordRemoved(const WordEnt){
+    for(new id = 1; id <= MaxClients; id++){
+        if(gSelWord[id] == WordEnt) gSelWord[id] = 0;
+        if(gConfirmDelete[id] == WordEnt) gConfirmDelete[id] = 0;
+    }
+}
+
+ReportBuildError(const UserId){
+    client_print(UserId, print_chat, "[Табличка] Изменение не выполнено: недостаточно свободных объектов. Прежнее состояние сохранено.");
+}

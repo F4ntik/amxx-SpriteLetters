@@ -1,0 +1,41 @@
+$modelname "../assets/models/SprLett/panel_bg_b.mdl"
+$cd "."
+$cdtexture "."
+$scale 1.0
+$origin 0 0 0 -90
+$gamma 1.0
+$bodygroup pieces
+{
+ studio "bg_32"
+ studio "bg_33"
+ studio "bg_34"
+ studio "bg_35"
+ studio "bg_36"
+ studio "bg_37"
+ studio "bg_38"
+ studio "bg_39"
+ studio "bg_40"
+ studio "bg_41"
+ studio "bg_42"
+ studio "bg_43"
+ studio "bg_44"
+ studio "bg_45"
+ studio "bg_46"
+ studio "bg_47"
+ studio "bg_48"
+ studio "bg_49"
+ studio "bg_50"
+ studio "bg_51"
+ studio "bg_52"
+ studio "bg_53"
+ studio "bg_54"
+ studio "bg_55"
+ studio "bg_56"
+ studio "bg_57"
+ studio "bg_58"
+ studio "bg_59"
+ studio "bg_60"
+ studio "bg_61"
+ studio "bg_62"
+}
+$sequence idle "idle" fps 1 loop

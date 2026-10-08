@@ -4,6 +4,7 @@
 
 #include <amxmodx>
 #include <reapi>
+#include <fakemeta>
 #include <SprLetters>
 #include "SprLett-Core/Ver"
 
@@ -96,7 +97,10 @@ new SprCharset[SprLett_CharsetData];
 new bool:EditMode = false;
 new Trie:Charsets;
 
+#include "SprLett-Core/Panel"
+
 public plugin_precache(){
+    PanelPrecache();
     register_plugin(PLUG_NAME, PLUG_VER, "ArKaNeMaN");
     register_library(SL_LIB_NAME);
 
@@ -109,7 +113,10 @@ public plugin_precache(){
     copy(CHARSET_DEFAULT_NAME, charsmax(CHARSET_DEFAULT_NAME), SprCharset[SL_CD_Name]);
 }
 
+new gWordRemovedForward;
+
 public plugin_init(){
+    gWordRemovedForward = CreateMultiForward("SprLett_WordRemoved", ET_IGNORE, FP_CELL);
     set_task(MARQUEE_UPDATE_INTERVAL, "Marquee_Think", 0, "", 0, "b"); // Register marquee think task
 
     // Register server commands for marquee control
@@ -256,17 +263,21 @@ InitWord(const Word[], const Float:Origin[3], MarqueeID = 0, MarqueeWidth = 0, F
 }
 
 bool:SetWordText(const WordEnt, const Text[]) {
-    if (!IsWord(WordEnt))
-        return false;
-
+    if(!IsWord(WordEnt)) return false;
+    new Previous[WORD_MAX_LENGTH], Display[WORD_MAX_LENGTH];
+    get_entvar(WordEnt, var_MarqueeText, Previous, charsmax(Previous));
+    get_entvar(WordEnt, var_WordText, Display, charsmax(Display));
+    new Float:OldOffset = get_entvar(WordEnt, var_MarqueeOffset);
     set_entvar(WordEnt, var_MarqueeText, Text);
     set_entvar(WordEnt, var_WordText, Text);
     new Float:StartOffset = Float:get_entvar(WordEnt, var_MarqueeSpeed) > 0.0
         ? float(get_entvar(WordEnt, var_MarqueeWidth)) : 0.0;
     set_entvar(WordEnt, var_MarqueeOffset, StartOffset);
-    DestroyWord(WordEnt);
-    BuildWord(WordEnt);
-    return true;
+    if(BuildWord(WordEnt)) return true;
+    set_entvar(WordEnt, var_MarqueeText, Previous);
+    set_entvar(WordEnt, var_WordText, Display);
+    set_entvar(WordEnt, var_MarqueeOffset, OldOffset);
+    return false;
 }
 
 FindFreeMarqueeId() {
@@ -296,6 +307,11 @@ bool:SetMarqueeWidth(const WordEnt, Width) {
 
     Width = clamp(Width, 0, WORD_MAX_LENGTH - 1);
     new OldWidth = get_entvar(WordEnt, var_MarqueeWidth);
+    new OldId = get_entvar(WordEnt, var_MarqueeID);
+    new Float:OldSpeed = get_entvar(WordEnt, var_MarqueeSpeed), Float:OldOffset = get_entvar(WordEnt, var_MarqueeOffset);
+    new Previous[WORD_MAX_LENGTH], Display[WORD_MAX_LENGTH];
+    get_entvar(WordEnt, var_MarqueeText, Previous, charsmax(Previous));
+    get_entvar(WordEnt, var_WordText, Display, charsmax(Display));
     new Text[WORD_MAX_LENGTH];
     get_entvar(WordEnt, OldWidth > 0 ? var_MarqueeText : var_WordText, Text, charsmax(Text));
 
@@ -318,9 +334,14 @@ bool:SetMarqueeWidth(const WordEnt, Width) {
         new Float:StartOffset = Float:get_entvar(WordEnt, var_MarqueeSpeed) > 0.0 ? float(Width) : 0.0;
         set_entvar(WordEnt, var_MarqueeOffset, StartOffset);
     }
-    DestroyWord(WordEnt);
-    BuildWord(WordEnt);
-    return true;
+    if(BuildWord(WordEnt)) return true;
+    set_entvar(WordEnt, var_MarqueeText, Previous);
+    set_entvar(WordEnt, var_WordText, Display);
+    set_entvar(WordEnt, var_MarqueeWidth, OldWidth);
+    set_entvar(WordEnt, var_MarqueeID, OldId);
+    set_entvar(WordEnt, var_MarqueeSpeed, OldSpeed);
+    set_entvar(WordEnt, var_MarqueeOffset, OldOffset);
+    return false;
 }
 
 public Marquee_Think() {
@@ -416,7 +437,6 @@ UpdateMarquee(const WordEnt, const bool:EnsureLetters = true) {
         // A failed allocation must not recursively attempt another rebuild.
         if (!EnsureLetters)
             return;
-        DestroyWord(WordEnt);
         BuildWord(WordEnt);
         return;
     }
@@ -501,76 +521,70 @@ UpdateMarquee(const WordEnt, const bool:EnsureLetters = true) {
     SyncMarqueeLetters(WordEnt, actualDisplayString, renderWidth);
 }
 
-BuildWord(const WordEnt){
-    if(!IsWord(WordEnt))
-        return;
-    
+bool:BuildWord(const WordEnt){
+    if(!IsWord(WordEnt)) return false;
+    new Word[WORD_MAX_LENGTH], Width = clamp(get_entvar(WordEnt, var_MarqueeWidth), 0, WORD_MAX_LENGTH-1);
+    if(Width) MarqueeFillWindowString(Word, charsmax(Word), Width);
+    else get_entvar(WordEnt, var_WordText, Word, charsmax(Word));
+
+    new Letters[WORD_MAX_LENGTH][LETTER_SIZE], Slots[WORD_MAX_LENGTH], Count, Cell, Next;
+    new Char[LETTER_SIZE];
+    while(GetLetterFromStr(Word, Char, Next)){
+        if(Width || !equal(Char, " ")){
+            copy(Letters[Count], LETTER_SIZE-1, Char);
+            Slots[Count++] = Cell;
+        }
+        Cell++;
+    }
+    new Entities[WORD_MAX_LENGTH], OldCount, It = WordEnt;
+    while(WordIterNext(It) && OldCount < WORD_MAX_LENGTH-1){
+        if(get_entvar(It, var_owner) != WordEnt) break;
+        Entities[OldCount++] = It;
+    }
+    new Need = max(0, Count-OldCount);
+    if(Need && global_get(glb_maxEntities)-engfunc(EngFunc_NumberOfEntities) < Need+64){
+        log_amx("[ERROR] Not enough free entities for word #%d; previous letters retained.", WordEnt);
+        return false;
+    }
+    new Charset[SprLett_CharsetData], CharsetName[32];
+    get_entvar(WordEnt, var_WordCharset, CharsetName, charsmax(CharsetName));
+    if(!GetCharset(CharsetName, Charset)) return false;
+    new Float:Origin[3];
+    get_entvar(WordEnt, var_origin, Origin);
+    for(new i = OldCount; i < Count; i++){
+        Entities[i] = CreateLetter(Letters[i], Origin, true);
+        if(is_nullent(Entities[i])){
+            for(new j = OldCount; j < i; j++) engfunc(EngFunc_RemoveEntity, Entities[j]);
+            log_amx("[ERROR] Cannot build complete word #%d; previous letters retained.", WordEnt);
+            return false;
+        }
+    }
+    new Float:Angles[3], Float:Step[3];
+    if(get_entvar(WordEnt, var_SL_RotateMode) == SL_ROTATE_WORD){
+        get_entvar(WordEnt, var_angles, Angles);
+        angle_vector(Angles, ANGLEVECTOR_RIGHT, Step);
+    } else {
+        get_entvar(WordEnt, var_WordDir, Angles);
+        angle_vector(Angles, ANGLEVECTOR_FORWARD, Step);
+    }
+    new Float:Offset = get_entvar(WordEnt, var_WordOffset);
+    for(new i; i < Count; i++){
+        new Ent = Entities[i], Float:Pos[3];
+        for(new a; a < 3; a++) Pos[a] = Origin[a] + Step[a]*Offset*float(Slots[i]);
+        engfunc(EngFunc_SetOrigin, Ent, Pos);
+        set_entvar(Ent, var_LetterText, Letters[i]);
+        MakeWordLetter(WordEnt, Ent);
+        SetLetterCharset(Ent, Charset);
+        set_entvar(Ent, var_chain, i+1 < Count ? Entities[i+1] : WordEnt);
+    }
+    for(new i = Count; i < OldCount; i++) engfunc(EngFunc_RemoveEntity, Entities[i]);
     set_entvar(WordEnt, var_effects, EF_NODRAW);
     set_entvar(WordEnt, var_flags, FL_DORMANT);
     set_entvar(WordEnt, var_WordEnt, WordEnt);
-
-    new Float:DirAngles[3];
-    get_entvar(WordEnt, var_WordDir, DirAngles);
-
-    new SprLett_RotateMode:RotateMode = SprLett_RotateMode:get_entvar(WordEnt, var_SL_RotateMode);
-
-    new Float:Angles[3];
-    new Float:StepVec[3];
-    if(RotateMode == SL_ROTATE_WORD){
-        get_entvar(WordEnt, var_angles, Angles);
-        angle_vector(Angles, ANGLEVECTOR_RIGHT, StepVec);
-    } else {
-        angle_vector(DirAngles, ANGLEVECTOR_FORWARD, StepVec);
-    }
-
-    new Float:WordOffset = Float:get_entvar(WordEnt, var_WordOffset);
-    new Float:OffsetVec[3];
-    VecMult(StepVec, WordOffset, OffsetVec);
-
-    new Word[WORD_MAX_LENGTH];
-    new marqueeWidth = clamp(get_entvar(WordEnt, var_MarqueeWidth), 0, WORD_MAX_LENGTH - 1);
-    new bool:isMarquee = marqueeWidth > 0;
-    if (isMarquee) {
-        set_entvar(WordEnt, var_MarqueeWidth, marqueeWidth);
-        MarqueeFillWindowString(Word, charsmax(Word), marqueeWidth);
-    } else {
-        get_entvar(WordEnt, var_WordText, Word, charsmax(Word));
-    }
-
-    new Float:Origin[3];
-    get_entvar(WordEnt, var_origin, Origin);
-
-    new Charset[SprLett_CharsetData], CharsetName[32];
-    get_entvar(WordEnt, var_WordCharset, CharsetName, charsmax(CharsetName));
-    GetCharset(CharsetName, Charset);
-
-    new PrevLetterEnt = WordEnt;
-    new Letter[LETTER_SIZE], Next = 0;
-    while(GetLetterFromStr(Word, Letter, Next)){
-        if(!isMarquee && equal(Letter, " ")){
-            VecSumm(Origin, OffsetVec, Origin);
-            continue;
-        }
-
-        new LetterEnt = CreateLetter(Letter, Origin, true);
-        if(is_nullent(LetterEnt)){
-            log_amx("[WARNING] Can`t create letter '%s' for word.", Letter);
-            VecSumm(Origin, OffsetVec, Origin);
-            continue;
-        }
-
-        MakeWordLetter(WordEnt, LetterEnt);
-        SetLetterCharset(LetterEnt, Charset);
-        set_entvar(PrevLetterEnt, var_chain, LetterEnt);
-        PrevLetterEnt = LetterEnt;
-
-        VecSumm(Origin, OffsetVec, Origin);
-    }
-
-    // Замыкание списка
-    set_entvar(PrevLetterEnt, var_chain, WordEnt);
-    if (isMarquee)
-        UpdateMarquee(WordEnt, false);
+    set_entvar(WordEnt, var_chain, Count ? Entities[0] : WordEnt);
+    if(Width) UpdateMarquee(WordEnt, false);
+    PanelRefresh(WordEnt);
+    return true;
 }
 
 /**
@@ -678,11 +692,14 @@ SetLetterCharset(const LetterEnt, const Charset[SprLett_CharsetData]){
  * @noreturn
  */
 DestroyWord(const WordEnt){
-    if(!IsWord(WordEnt))
-        return;
-    new LetterEnt = WordEnt;
-    while(WordIterNext(LetterEnt) != nullent)
-        RemoveLetter(LetterEnt);
+    if(!IsWord(WordEnt)) return;
+    new Ent = get_entvar(WordEnt, var_chain), Count;
+    while(IsLetter(Ent) && Count++ < WORD_MAX_LENGTH){
+        if(get_entvar(Ent, var_owner) != WordEnt) break;
+        new Next = get_entvar(Ent, var_chain);
+        engfunc(EngFunc_RemoveEntity, Ent);
+        Ent = Next;
+    }
     set_entvar(WordEnt, var_chain, nullent);
 }
 
@@ -697,8 +714,11 @@ RemoveWord(Ent){
     new WordEnt = GetWord(Ent);
     if(WordEnt == nullent)
         return;
+    PanelRemove(WordEnt);
     DestroyWord(WordEnt);
-    RgRemoveEnt(WordEnt);
+    new Result;
+    if(gWordRemovedForward) ExecuteForward(gWordRemovedForward, Result, WordEnt);
+    engfunc(EngFunc_RemoveEntity, WordEnt);
 }
 
 /**
@@ -708,7 +728,7 @@ RemoveWord(Ent){
  *
  * @noreturn
  */
-RemoveLetter(const LetterEnt){
+stock RemoveLetter(const LetterEnt){
     if(!IsLetter(LetterEnt))
         return;
     RgRemoveEnt(LetterEnt);

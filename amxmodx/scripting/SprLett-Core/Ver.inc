@@ -1,5 +1,1 @@
-/**
- * Sprite Letters: Version
- */
-
-stock const SPRLETT_VERSION[] = "1.3.1";
+stock const SPRLETT_VERSION[] = "1.4.1-mdl-dev";
